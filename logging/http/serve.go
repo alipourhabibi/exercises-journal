@@ -87,7 +87,7 @@ func (f *fileServer) serveStatus(w http.ResponseWriter, r *http.Request, status 
 }
 
 func (f *fileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	f.logger.Debug("path", f.path, "remote_address", r.RemoteAddr, "method", r.Method, "url", r.URL.String())
+	f.logger.Info("path", f.path, "remote_address", r.RemoteAddr, "method", r.Method, "url", r.URL.String())
 	urlPath := r.URL.Path
 	if !strings.HasPrefix(urlPath, "/") {
 		urlPath = "/" + urlPath
@@ -118,8 +118,9 @@ func (f *fileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			f.logger.Info("url", r.URL.String(), "method", r.Method, "status", http.StatusOK)
 		}
 	default:
+		f.logger.Debug("msg", "serving file", "file", osPath)
 		http.ServeFile(w, r, osPath)
-		f.logger.Info("msg", "file server", "url", r.URL.String(), "method", r.Method, "status", http.StatusOK)
+		f.logger.Info("msg", "file served", "url", r.URL.String(), "method", r.Method, "status", http.StatusOK)
 	}
 }
 
