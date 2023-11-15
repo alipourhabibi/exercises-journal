@@ -30,4 +30,4 @@ jobs:
         with:
           context: logging/.
           push: true
-          tags: ghcr.io/alipourhabibi/exercise-journals/logging:latest
+          tags: ghcr.io/alipourhabibi/exercise-journals-logging:latest
