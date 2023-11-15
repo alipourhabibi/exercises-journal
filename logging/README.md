@@ -17,11 +17,12 @@ Also some codes are use from [http-file-server](https://github.com/sgreben/http-
 Clone the repo
 ```sh
 $ go build -o httpserve .
-$ ./httpserve --port 8001 --prefix Server -- path /home/ali --level 4
+$ ./httpserve --port 8001 --prefix Server -- path /home/ali --level 4 --printcaller true
 ```
 
 ## Log Levels
-There are 4 log Levels
+We have 5 log Levels in this repo
+- TRACE
 - DEBUG
 - INFO
 - WARN
@@ -34,4 +35,9 @@ logger.Info("%s", "SOME TEXT")
 logger.Debug("%s", "SOME OTHER TEXT")
 ```
 
-NOTE: the log level is only used to keep track of your logic for logging. so if the level is ERROR and you do a Debug call it will log the Debug args you provide.
+## Changelogs
+- Change log format to logfmt
+- Add Trace log level
+- Add option to print caller file and fucntion
+- Log levels will be checked in log lib itself
+- Change default output to Stderr
