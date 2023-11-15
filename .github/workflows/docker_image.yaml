@@ -30,8 +30,8 @@ jobs:
         with:
           context: .
           push: false
-          tags: ghcr.io/alipourhabibi/exercise-journals/logging:{{ github.ref_name }}
+          tags: ghcr.io/alipourhabibi/exercise-journals/logging:latest
       - 
        name: 'Build And Push Image'
        run: |
-         docker push ghcr.io/alipourhabibi/exercise-journals/logging:{{ github.ref_name }}
+         docker push ghcr.io/alipourhabibi/exercise-journals/logging:latest
