@@ -1,5 +1,4 @@
 name: ci
-
 on:
   push:
     tags:
@@ -28,5 +27,6 @@ jobs:
       - 
        name: 'Build And Push Image'
        run: |
-         docker build . --tag ghcr.io/alipourhabibi/exercise-journals/logging:{{ github.ref }}
+         cd logging && \
+         docker build . --tag ghcr.io/alipourhabibi/exercise-journals/logging:{{ github.ref }} && \
          docker push ghcr.io/alipourhabibi/exercise-journals/logging:{{ github.ref }}
