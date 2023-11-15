@@ -34,4 +34,4 @@ jobs:
       - 
        name: 'Build And Push Image'
        run: |
-         docker push ghcr.io/alipourhabibi/exercise-journals/logging:lates
+         docker push ghcr.io/alipourhabibi/exercise-journals/logging:latest
