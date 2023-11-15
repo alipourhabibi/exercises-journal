@@ -15,13 +15,14 @@ var route = flag.String("route", "/", "http route")
 var path = flag.String("path", "/home/ali", "file path in os")
 var logLevel = flag.Int("level", 3, "log level")
 var outFlie = flag.String("out", "", "output file")
+var printCaller = flag.Bool("printcaller", false, "prints the caller function and file")
 
 func main() {
 	flag.Parse()
 	var f = &os.File{}
 	var err error
 	if *outFlie == "" {
-		f = os.Stdout
+		f = os.Stderr
 	} else {
 		f, err = os.OpenFile(*outFlie, 644, fs.FileMode(os.O_CREATE))
 		if err != nil {
@@ -30,6 +31,7 @@ func main() {
 	}
 	level := logger.Level(*logLevel)
 	logger := logger.New(f, *prefix, level)
+	logger.SetPrintCaller(*printCaller)
 	h2 := http.NewFileServer(*logger, *path, *route)
 	h2.Run(uint16(*port))
 }

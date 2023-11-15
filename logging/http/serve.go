@@ -76,18 +76,18 @@ type responseLogger struct {
 }
 
 func (f *fileServer) serveStatus(w http.ResponseWriter, r *http.Request, status int) error {
+	f.logger.Debug("msg", "writing StatusCode", "status", status, "status_text", http.StatusText(status))
 	w.WriteHeader(status)
 	_, err := w.Write([]byte(http.StatusText(status)))
 	if err != nil {
+		f.logger.Error("error", err.Error())
 		return err
 	}
 	return nil
 }
 
 func (f *fileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if f.logger.GetLevel() >= logger.LevelDebug {
-		f.logger.Debug("Start [%s] %s %s %s", f.path, r.RemoteAddr, r.Method, r.URL.String())
-	}
+	f.logger.Debug("path", f.path, "remote_address", r.RemoteAddr, "method", r.Method, "url", r.URL.String())
 	urlPath := r.URL.Path
 	if !strings.HasPrefix(urlPath, "/") {
 		urlPath = "/" + urlPath
@@ -102,48 +102,39 @@ func (f *fileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case os.IsNotExist(err):
 		_ = f.serveStatus(w, r, http.StatusNotFound)
-		if f.logger.GetLevel() >= logger.LevelInfo {
-			f.logger.Info("Request %s, %s | Response %d", r.URL.String(), r.Method, http.StatusNotFound)
-		}
+		f.logger.Info("url", r.URL.String(), "method", r.Method, "status", http.StatusNotFound)
 	case os.IsPermission(err):
 		_ = f.serveStatus(w, r, http.StatusForbidden)
-		if f.logger.GetLevel() >= logger.LevelInfo {
-			f.logger.Info("Request %s, %s | Response %d", r.URL.String(), r.Method, http.StatusForbidden)
-		}
+		f.logger.Info("url", r.URL.String(), "method", r.Method, "status", http.StatusForbidden)
 	case err != nil:
 		_ = f.serveStatus(w, r, http.StatusInternalServerError)
-		if f.logger.GetLevel() >= logger.LevelError {
-			f.logger.Info("Request %s, %s | Response %d", r.URL.String(), r.Method, http.StatusInternalServerError)
-		}
+		f.logger.Error("url", r.URL.String(), "method", r.Method, "status", http.StatusInternalServerError)
 	case info.IsDir():
 		err := f.serveDir(w, r, osPath)
 		if err != nil {
 			_ = f.serveStatus(w, r, http.StatusInternalServerError)
-			if f.logger.GetLevel() >= logger.LevelError {
-				f.logger.Info("Request %s, %s | Response %d", r.URL.String(), r.Method, http.StatusInternalServerError)
-			}
+			f.logger.Error("url", r.URL.String(), "method", r.Method, "status", http.StatusInternalServerError)
 		} else {
-			if f.logger.GetLevel() >= logger.LevelInfo {
-				f.logger.Info("Request %s, %s | Response %d", r.URL.String(), r.Method, http.StatusOK)
-			}
+			f.logger.Info("url", r.URL.String(), "method", r.Method, "status", http.StatusOK)
 		}
 	default:
 		http.ServeFile(w, r, osPath)
-		if f.logger.GetLevel() >= logger.LevelInfo {
-			f.logger.Info("Request %s, %s | Response %d", r.URL.String(), r.Method, http.StatusOK)
-		}
+		f.logger.Info("msg", "file server", "url", r.URL.String(), "method", r.Method, "status", http.StatusOK)
 	}
 }
 
 func (f *fileServer) serveDir(w http.ResponseWriter, r *http.Request, osPath string) error {
+	f.logger.Debug("msg", "opening directory", "directory", osPath)
 	d, err := os.Open(osPath)
 	if err != nil {
 		return err
 	}
+	f.logger.Debug("msg", "reding directory", "directory", osPath)
 	files, err := d.Readdir(-1)
 	if err != nil {
 		return err
 	}
+	f.logger.Debug("msg", "sorting files")
 	sort.Slice(files, func(i, j int) bool { return files[i].Name() < files[j].Name() })
 	return directoryListingTemplate.Execute(w, directoryListingData{
 		Files: func() (out []directoryListingFileData) {
@@ -167,16 +158,18 @@ func (f *fileServer) serveDir(w http.ResponseWriter, r *http.Request, osPath str
 				}
 				out = append(out, fileData)
 			}
+			f.logger.Debug("msg", "complete reading directory contents")
+			f.logger.Trace("directory content", out)
 			return out
 		}(),
 	})
 }
 
 func (f *fileServer) Run(port uint16) error {
-	f.logger.Info("Starting server at %d", port)
+	f.logger.Info("msg", "Starting server...", "port", port)
 	err := http.ListenAndServe(fmt.Sprintf(":%d", port), f)
 	if err != nil {
-		f.logger.Error("Starting server at %d, err: %v", port, err)
+		f.logger.Error("msg", "Error starting server", "port", port, "error", err.Error())
 	}
 	return nil
 }

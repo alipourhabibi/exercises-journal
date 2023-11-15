@@ -3,8 +3,9 @@ package logger
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
-	"time"
+	"runtime"
 )
 
 var output = os.Stdout
@@ -12,6 +13,7 @@ var output = os.Stdout
 type Level int
 
 var (
+	LevelTrace Level = 5
 	LevelDebug Level = 4
 	LevelInfo  Level = 3
 	LevelWarn  Level = 2
@@ -19,15 +21,17 @@ var (
 )
 
 var levelStr = map[Level]string{
-	LevelDebug: "[DEBUG]",
-	LevelInfo:  "[INFO]",
-	LevelWarn:  "[WARN]",
-	LevelError: "[ERROR]",
+	LevelTrace: "TRACE",
+	LevelDebug: "DEBUG",
+	LevelInfo:  "INFO",
+	LevelWarn:  "WARN",
+	LevelError: "ERROR",
 }
 
 type Logger struct {
-	prefix string
-	level  Level
+	prefix      string
+	level       Level
+	printCaller bool
 }
 
 func New(out *os.File, prefix string, level Level) *Logger {
@@ -50,29 +54,68 @@ func (l *Logger) SetOutput(out *os.File) {
 	output = out
 }
 
-func (l *Logger) log(ctx context.Context, level Level, msg string, args ...any) {
-	strs := []string{}
-	for _, v := range args {
-		strs = append(strs, fmt.Sprintf("%s", v))
+func (l *Logger) SetPrintCaller(b bool) {
+	l.printCaller = b
+}
+
+func (l *Logger) log(ctx context.Context, level Level, args ...any) {
+	if l.printCaller {
+		// skip 2
+		pc, file, line, _ := runtime.Caller(2)
+		funcForPC := runtime.FuncForPC(pc)
+		args = append(args, "caller_file", fmt.Sprintf("%s:%d", file, line))
+		args = append(args, "caller_func", funcForPC.Name())
 	}
-	msg = fmt.Sprintf(msg, args...)
-	msg = fmt.Sprintf("%s %s %s", levelStr[level], l.prefix, msg)
-	msg = fmt.Sprintf("[%s] %s\n", time.Now().Format("2006-01-02 15:04:05"), msg)
+	mod := math.Mod(float64(len(args)), 2)
+	if mod != 0 {
+		return
+	}
+	var msg string
+	msg += "level=" + levelStr[level] + " "
+	for len(args) > 0 {
+		if strArg, ok := args[0].(string); ok {
+			msg += "\"" + strArg + "\""
+		} else {
+			msg += fmt.Sprintf("%v", args[0])
+		}
+		if strArg, ok := args[1].(string); ok {
+			msg += "=\"" + strArg + "\""
+		} else {
+			msg += fmt.Sprintf("=%v", args[1])
+		}
+		msg += " "
+		args = args[2:]
+	}
+	msg += "\n"
 	output.Write([]byte(msg))
 }
 
-func (l *Logger) Info(msg string, args ...any) {
-	l.log(context.Background(), LevelInfo, msg, args...)
+func (l *Logger) Trace(args ...any) {
+	if l.level >= LevelTrace {
+		l.log(context.Background(), LevelTrace, args...)
+	}
 }
 
-func (l *Logger) Debug(msg string, args ...any) {
-	l.log(context.Background(), LevelDebug, msg, args...)
+func (l *Logger) Debug(args ...any) {
+	if l.level >= LevelDebug {
+		l.log(context.Background(), LevelDebug, args...)
+	}
 }
 
-func (l *Logger) Warn(msg string, args ...any) {
-	l.log(context.Background(), LevelWarn, msg, args...)
+func (l *Logger) Info(args ...any) {
+	if l.level >= LevelInfo {
+		l.log(context.Background(), LevelInfo, args...)
+	}
 }
 
-func (l *Logger) Error(msg string, args ...any) {
-	l.log(context.Background(), LevelError, msg, args...)
+func (l *Logger) Warn(args ...any) {
+	if l.level >= LevelWarn {
+		l.log(context.Background(), LevelWarn, args...)
+	}
+}
+
+func (l *Logger) Error(args ...any) {
+	if l.level >= LevelError {
+		l.log(context.Background(), LevelError, args...)
+	}
 }
