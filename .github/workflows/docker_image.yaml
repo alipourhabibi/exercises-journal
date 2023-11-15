@@ -24,9 +24,14 @@ jobs:
          username: ${{github.actor}}
          password: ${{secrets.GITHUB_TOKEN}}
 
+      -
+        name: Build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: ghcr.io/alipourhabibi/exercise-journals/logging:{{ github.ref }}
       - 
        name: 'Build And Push Image'
        run: |
-         cd logging && \
-         docker build . --tag ghcr.io/alipourhabibi/exercise-journals/logging:{{ github.ref }} && \
          docker push ghcr.io/alipourhabibi/exercise-journals/logging:{{ github.ref }}
