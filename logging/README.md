@@ -19,6 +19,10 @@ Clone the repo
 $ go build -o httpserve .
 $ ./httpserve --port 8001 --prefix Server -- path /home/ali --level 4 --printcaller true
 ```
+docker
+```sh
+$ docker run -it --network=host ghcr.io/alipourhabibi/exercise-journals-logging:latest /app/httpfileserver --port 8000 --path /path/to/file --level 4 --printcaller true
+```
 
 ## Log Levels
 We have 5 log Levels in this repo
