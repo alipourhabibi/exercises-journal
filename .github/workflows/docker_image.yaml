@@ -29,9 +29,5 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: logging/.
-          push: false
+          push: true
           tags: ghcr.io/alipourhabibi/exercise-journals/logging:latest
-      - 
-       name: 'Build And Push Image'
-       run: |
-         docker push ghcr.io/alipourhabibi/exercise-journals/logging:latest
