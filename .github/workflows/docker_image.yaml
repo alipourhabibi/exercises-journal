@@ -28,10 +28,10 @@ jobs:
         name: Build
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: logging/.
           push: false
           tags: ghcr.io/alipourhabibi/exercise-journals/logging:latest
       - 
        name: 'Build And Push Image'
        run: |
-         docker push ghcr.io/alipourhabibi/exercise-journals/logging:latest
+         docker push ghcr.io/alipourhabibi/exercise-journals/logging:lates
