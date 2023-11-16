@@ -75,9 +75,9 @@ func main() {
 			conf.Printcaller = pc
 		}
 	})
-	level := logger.Level(*logLevel)
-	logger, err := logger.New(conf.Out, *prefix, level)
-	logger.SetPrintCaller(*printCaller)
-	h2 := http.NewFileServer(*logger, *path, *route)
-	h2.Run(uint16(*port))
+	level := logger.Level(conf.Level)
+	logger, err := logger.New(conf.Out, conf.Prefix, level)
+	logger.SetPrintCaller(conf.Printcaller)
+	h2 := http.NewFileServer(*logger, conf.Path, conf.Route)
+	h2.Run(uint16(conf.Port))
 }
