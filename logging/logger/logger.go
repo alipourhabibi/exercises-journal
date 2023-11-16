@@ -8,8 +8,6 @@ import (
 	"runtime"
 )
 
-var output = os.Stdout
-
 type Level int
 
 var (
@@ -29,17 +27,22 @@ var levelStr = map[Level]string{
 }
 
 type Logger struct {
+	output      *os.File
 	prefix      string
 	level       Level
 	printCaller bool
 }
 
-func New(out *os.File, prefix string, level Level) *Logger {
-	output = out
+func New(file string, prefix string, level Level) (*Logger, error) {
+	out, err := os.OpenFile(file, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	if err != nil {
+		panic(err)
+	}
 	return &Logger{
+		output: out,
 		prefix: prefix,
 		level:  level,
-	}
+	}, nil
 }
 
 func (l *Logger) SetLevel(level Level) {
@@ -51,7 +54,7 @@ func (l *Logger) GetLevel() Level {
 }
 
 func (l *Logger) SetOutput(out *os.File) {
-	output = out
+	l.output = out
 }
 
 func (l *Logger) SetPrintCaller(b bool) {
@@ -87,7 +90,7 @@ func (l *Logger) log(ctx context.Context, level Level, args ...any) {
 		args = args[2:]
 	}
 	msg += "\n"
-	output.Write([]byte(msg))
+	l.output.Write([]byte(msg))
 }
 
 func (l *Logger) Trace(args ...any) {

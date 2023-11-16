@@ -1,0 +1,7 @@
+port: 8000
+prefix: Server
+route: /
+path: /home/ali
+level: 4
+out: /dev/stderr
+printcaller: true
