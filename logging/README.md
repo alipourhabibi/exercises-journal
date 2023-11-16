@@ -40,8 +40,25 @@ logger.Debug("%s", "SOME OTHER TEXT")
 ```
 
 ## Changelogs
+November-15, 2023
 - Change log format to logfmt
 - Add Trace log level
 - Add option to print caller file and fucntion
 - Log levels will be checked in log lib itself
 - Change default output to Stderr
+
+November-16, 2023
+- Add config file
+
+## Config file
+We have a configuration file that exists near the cli tool which configs the app, \
+The flags will override config in config.yaml file. \
+
+config file is yaml, because,
+- It is human-friendly
+- It is a superset of JSON
+- It is very convenient format for specifying hierarchical configuration data
+- Compact syntax
+Which make it a good choice for config files.
+
+The tool will panic if there is no config file.
