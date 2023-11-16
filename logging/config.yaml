@@ -5,3 +5,6 @@ path: /home/ali
 level: 4
 out: /dev/stderr
 printcaller: true
+
+format:
+  time: "2006-01-02 15:04:05"

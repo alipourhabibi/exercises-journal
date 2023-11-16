@@ -27,6 +27,11 @@ type config struct {
 	Level       int    `yaml:"level"`
 	Out         string `yaml:"out"`
 	Printcaller bool   `yaml:"printcaller"`
+	Format      Format `yaml:"format"`
+}
+
+type Format struct {
+	Time string `yaml:"time"`
 }
 
 var conf = config{}
@@ -76,7 +81,7 @@ func main() {
 		}
 	})
 	level := logger.Level(conf.Level)
-	logger, err := logger.New(conf.Out, conf.Prefix, level)
+	logger, err := logger.New(conf.Out, conf.Prefix, conf.Format.Time, level)
 	logger.SetPrintCaller(conf.Printcaller)
 	h2 := http.NewFileServer(*logger, conf.Path, conf.Route)
 	h2.Run(uint16(conf.Port))

@@ -6,6 +6,7 @@ import (
 	"math"
 	"os"
 	"runtime"
+	"time"
 )
 
 type Level int
@@ -31,17 +32,19 @@ type Logger struct {
 	prefix      string
 	level       Level
 	printCaller bool
+	timeFormat  string
 }
 
-func New(file string, prefix string, level Level) (*Logger, error) {
+func New(file string, prefix string, timeFormat string, level Level) (*Logger, error) {
 	out, err := os.OpenFile(file, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		panic(err)
 	}
 	return &Logger{
-		output: out,
-		prefix: prefix,
-		level:  level,
+		timeFormat: timeFormat,
+		output:     out,
+		prefix:     prefix,
+		level:      level,
 	}, nil
 }
 
@@ -74,6 +77,7 @@ func (l *Logger) log(ctx context.Context, level Level, args ...any) {
 		return
 	}
 	var msg string
+	msg += "time=[" + time.Now().Format(l.timeFormat) + "] "
 	msg += "level=" + levelStr[level] + " "
 	for len(args) > 0 {
 		if strArg, ok := args[0].(string); ok {
