@@ -16,7 +16,7 @@ var route = flag.String("route", "/", "http route")
 var path = flag.String("path", "/home/ali", "file path in os")
 var logLevel = flag.Int("level", 3, "log level")
 var outFlie = flag.String("out", "", "output file")
-var printCaller = flag.Bool("printcaller", false, "prints the caller function and file")
+var printCallerstr = flag.String("printcaller", "false", "prints the caller function and file")
 var configFile = flag.String("configfile", "", "config file")
 
 type config struct {
