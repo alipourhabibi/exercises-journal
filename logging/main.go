@@ -25,7 +25,7 @@ var configFile = flag.String("configfile", "", "config file")
 func configuire() {
 	flag.Parse()
 	if *configFile == "" {
-		*configFile = "config.yaml"
+		*configFile = "/etc/logger/config.yaml"
 	}
 	var err error
 	err = config.Conf.Load(*configFile)
