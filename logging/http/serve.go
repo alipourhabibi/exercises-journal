@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -59,6 +60,12 @@ type fileServer struct {
 	route  string
 	path   string
 	logger logger.Logger
+	port   uint16
+	server *http.Server
+}
+
+func (f *fileServer) ServerNil() bool {
+	return f.server == nil
 }
 
 func NewFileServer(logger logger.Logger, path, route string) *fileServer {
@@ -67,6 +74,10 @@ func NewFileServer(logger logger.Logger, path, route string) *fileServer {
 		route:  route,
 		path:   path,
 	}
+}
+
+func (f *fileServer) SetLogger(logger logger.Logger) {
+	f.logger = logger
 }
 
 type responseLogger struct {
@@ -166,11 +177,22 @@ func (f *fileServer) serveDir(w http.ResponseWriter, r *http.Request, osPath str
 	})
 }
 
-func (f *fileServer) Run(port uint16) error {
-	f.logger.Info("msg", "Starting server...", "port", port)
-	err := http.ListenAndServe(fmt.Sprintf(":%d", port), f)
+func (f *fileServer) SetupServer(port uint16) {
+	f.port = port
+	server := &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: f}
+	f.server = server
+}
+
+func (f *fileServer) Run() error {
+	f.logger.Info("msg", "Starting server...", "port", f.port)
+	server := f.server
+	err := server.ListenAndServe()
 	if err != nil {
-		f.logger.Error("msg", "Error starting server", "port", port, "error", err.Error())
+		f.logger.Error("msg", "Error starting server", "port", f.port, "error", err.Error())
 	}
 	return nil
+}
+
+func (f *fileServer) Shutdown() error {
+	return f.server.Shutdown(context.Background())
 }

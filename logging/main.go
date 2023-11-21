@@ -2,12 +2,15 @@ package main
 
 import (
 	"flag"
+	"log"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 
+	"github.com/alipourhabibi/exercises-journal/logging/config"
 	"github.com/alipourhabibi/exercises-journal/logging/http"
 	"github.com/alipourhabibi/exercises-journal/logging/logger"
-	yaml "gopkg.in/yaml.v2"
 )
 
 var port = flag.Uint("port", 0, "http file server port")
@@ -19,34 +22,14 @@ var outFlie = flag.String("out", "", "output file")
 var printCallerstr = flag.String("printcaller", "false", "prints the caller function and file")
 var configFile = flag.String("configfile", "", "config file")
 
-type config struct {
-	Port        uint16 `yaml:"port"`
-	Prefix      string `yaml:"prefix"`
-	Route       string `yaml:"route"`
-	Path        string `yaml:"path"`
-	Level       int    `yaml:"level"`
-	Out         string `yaml:"out"`
-	Printcaller bool   `yaml:"printcaller"`
-	Format      Format `yaml:"format"`
-}
-
-type Format struct {
-	Time string `yaml:"time"`
-}
-
-var conf = config{}
-
-func main() {
+func configuire() {
 	flag.Parse()
 	if *configFile == "" {
 		*configFile = "config.yaml"
 	}
 	var err error
-	confFile, err := os.ReadFile(*configFile)
-	if err != nil {
-		panic(err)
-	}
-	err = yaml.Unmarshal(confFile, &conf)
+	err = config.Conf.Load(*configFile)
+	err = readConfigFile()
 	if err != nil {
 		panic(err)
 	}
@@ -57,32 +40,90 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
-			conf.Port = uint16(port)
+			config.Conf.Port = uint16(port)
 		case "prefix":
-			conf.Prefix = f.Value.String()
+			config.Conf.Prefix = f.Value.String()
 		case "route":
-			conf.Route = f.Value.String()
+			config.Conf.Route = f.Value.String()
 		case "path":
-			conf.Path = f.Value.String()
+			config.Conf.Path = f.Value.String()
 		case "level":
 			level, err := strconv.Atoi(f.Value.String())
 			if err != nil {
 				panic(err)
 			}
-			conf.Level = level
+			config.Conf.Level = level
 		case "out":
-			conf.Out = f.Value.String()
+			config.Conf.Out = f.Value.String()
 		case "printcaller":
 			pc, err := strconv.ParseBool(f.Value.String())
 			if err != nil {
 				panic(err)
 			}
-			conf.Printcaller = pc
+			config.Conf.Printcaller = pc
 		}
 	})
-	level := logger.Level(conf.Level)
-	logger, err := logger.New(conf.Out, conf.Prefix, conf.Format.Time, level)
-	logger.SetPrintCaller(conf.Printcaller)
-	h2 := http.NewFileServer(*logger, conf.Path, conf.Route)
-	h2.Run(uint16(conf.Port))
+}
+
+func readConfigFile() error {
+	err := config.Conf.Load(*configFile)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func main() {
+	configuire()
+	level := logger.Level(config.Conf.Level)
+	customLogger, err := logger.New(config.Conf.Out, config.Conf.Prefix, config.Conf.Format.Time, level)
+	if err != nil {
+		panic(err)
+	}
+	customLogger.SetPrintCaller(config.Conf.Printcaller)
+	h2 := http.NewFileServer(*customLogger, config.Conf.Path, config.Conf.Route)
+	h2.SetupServer(config.Conf.Port)
+	go h2.Run()
+
+	var state byte
+	const (
+		waitForSignal byte = iota
+		reconfigureStatus
+	)
+	signalCh := make(chan os.Signal, 1)
+	for {
+		switch state {
+		case reconfigureStatus:
+			// makes new logger
+			// set it to http
+			err := readConfigFile()
+			if err != nil {
+				// TODO
+			}
+			level := logger.Level(config.Conf.Level)
+			customLogger, err = logger.New(config.Conf.Out, config.Conf.Prefix, config.Conf.Format.Time, level)
+			if err != nil {
+				panic(err)
+			}
+			customLogger.SetPrintCaller(config.Conf.Printcaller)
+			h2.SetLogger(*customLogger)
+			state = waitForSignal
+		case waitForSignal:
+			signal.Notify(signalCh,
+				syscall.SIGHUP,
+				syscall.SIGINT,
+				syscall.SIGTERM,
+				syscall.SIGQUIT)
+
+			sig := <-signalCh
+			log.Println("signal recieved: ", sig)
+			switch sig {
+			case syscall.SIGHUP:
+				state = reconfigureStatus
+			case syscall.SIGQUIT, syscall.SIGINT, syscall.SIGTERM:
+				return
+			}
+
+		}
+	}
 }
