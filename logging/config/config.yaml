@@ -1,10 +1,19 @@
-port: 8000
-prefix: Server
-route: /
-path: /home/ali
-level: 4
-out: /dev/stderr
-printcaller: true
+server:
+  # port which the app is served
+  port: 8000
+  # the route which you access the file server
+  route: /
+  # path to the folder you are serving
+  path: /home/ali
+logging:
+  # prefix for each log
+  prefix: Server
+  # log level
+  level: 4
+  # log output
+  out: /dev/stderr
+  # print the function and file that the called the log
+  print_caller: true
+  # format of the time in log
+  time_format: "2006-01-02 15:04:05"
 
-format:
-  time: "2006-01-02 15:04:05"

@@ -28,7 +28,6 @@ func configuire() {
 		*configFile = "/etc/logger/config.yaml"
 	}
 	var err error
-	err = config.Conf.Load(*configFile)
 	err = readConfigFile()
 	if err != nil {
 		panic(err)
@@ -40,27 +39,28 @@ func configuire() {
 			if err != nil {
 				panic(err)
 			}
-			config.Conf.Port = uint16(port)
-		case "prefix":
-			config.Conf.Prefix = f.Value.String()
+			config.Conf.Server.Port = uint16(port)
 		case "route":
-			config.Conf.Route = f.Value.String()
+			config.Conf.Server.Route = f.Value.String()
 		case "path":
-			config.Conf.Path = f.Value.String()
+			config.Conf.Server.Path = f.Value.String()
+
+		case "prefix":
+			config.Conf.Logging.Prefix = f.Value.String()
 		case "level":
 			level, err := strconv.Atoi(f.Value.String())
 			if err != nil {
 				panic(err)
 			}
-			config.Conf.Level = level
+			config.Conf.Logging.Level = level
 		case "out":
-			config.Conf.Out = f.Value.String()
+			config.Conf.Logging.Out = f.Value.String()
 		case "printcaller":
 			pc, err := strconv.ParseBool(f.Value.String())
 			if err != nil {
 				panic(err)
 			}
-			config.Conf.Printcaller = pc
+			config.Conf.Logging.Printcaller = pc
 		}
 	})
 }
@@ -75,14 +75,14 @@ func readConfigFile() error {
 
 func main() {
 	configuire()
-	level := logger.Level(config.Conf.Level)
-	customLogger, err := logger.New(config.Conf.Out, config.Conf.Prefix, config.Conf.Format.Time, level)
+	level := logger.Level(config.Conf.Logging.Level)
+	customLogger, err := logger.New(config.Conf.Logging.Out, config.Conf.Logging.Prefix, config.Conf.Logging.Format, level)
 	if err != nil {
 		panic(err)
 	}
-	customLogger.SetPrintCaller(config.Conf.Printcaller)
-	h2 := http.NewFileServer(*customLogger, config.Conf.Path, config.Conf.Route)
-	h2.SetupServer(config.Conf.Port)
+	customLogger.SetPrintCaller(config.Conf.Logging.Printcaller)
+	h2 := http.NewFileServer(*customLogger, config.Conf.Server.Path, config.Conf.Server.Route)
+	h2.SetupServer(config.Conf.Server.Port)
 	go h2.Run()
 
 	var state byte
@@ -100,12 +100,12 @@ func main() {
 			if err != nil {
 				// TODO
 			}
-			level := logger.Level(config.Conf.Level)
-			customLogger, err = logger.New(config.Conf.Out, config.Conf.Prefix, config.Conf.Format.Time, level)
+			level := logger.Level(config.Conf.Logging.Level)
+			customLogger, err = logger.New(config.Conf.Logging.Out, config.Conf.Logging.Prefix, config.Conf.Logging.Format, level)
 			if err != nil {
 				panic(err)
 			}
-			customLogger.SetPrintCaller(config.Conf.Printcaller)
+			customLogger.SetPrintCaller(config.Conf.Logging.Printcaller)
 			h2.SetLogger(*customLogger)
 			state = waitForSignal
 		case waitForSignal:

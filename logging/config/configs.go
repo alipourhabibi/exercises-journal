@@ -6,19 +6,23 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type config struct {
-	Port        uint16 `yaml:"port"`
-	Prefix      string `yaml:"prefix"`
-	Route       string `yaml:"route"`
-	Path        string `yaml:"path"`
-	Level       int    `yaml:"level"`
-	Out         string `yaml:"out"`
-	Printcaller bool   `yaml:"printcaller"`
-	Format      Format `yaml:"format"`
+type Server struct {
+	Port  uint16 `yaml:"port"`
+	Route string `yaml:"route"`
+	Path  string `yaml:"path"`
 }
 
-type Format struct {
-	Time string `yaml:"time"`
+type Logging struct {
+	Prefix      string `yaml:"prefix"`
+	Level       int    `yaml:"level"`
+	Out         string `yaml:"out"`
+	Printcaller bool   `yaml:"print_caller"`
+	Format      string `yaml:"tme_format"`
+}
+
+type config struct {
+	Server  Server  `yaml:"server"`
+	Logging Logging `yaml:"logging"`
 }
 
 var Conf = config{}
