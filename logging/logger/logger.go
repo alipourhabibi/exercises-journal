@@ -27,6 +27,14 @@ var levelStr = map[Level]string{
 	LevelError: "ERROR",
 }
 
+var StrLevel = map[string]Level{
+	"TRACE": LevelTrace,
+	"DEBUG": LevelDebug,
+	"INFO":  LevelInfo,
+	"WARN":  LevelWarn,
+	"ERROR": LevelError,
+}
+
 type Logger struct {
 	output      *os.File
 	prefix      string

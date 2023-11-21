@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/alipourhabibi/exercises-journal/logging/config"
@@ -17,7 +18,7 @@ var port = flag.Uint("port", 0, "http file server port")
 var prefix = flag.String("prefix", "Server", "prefix for logs")
 var route = flag.String("route", "/", "http route")
 var path = flag.String("path", "/home/ali", "file path in os")
-var logLevel = flag.Int("level", 3, "log level")
+var logLevel = flag.String("level", "info", "log level")
 var outFlie = flag.String("out", "", "output file")
 var printCallerstr = flag.String("printcaller", "false", "prints the caller function and file")
 var configFile = flag.String("configfile", "", "config file")
@@ -48,11 +49,7 @@ func configuire() {
 		case "prefix":
 			config.Conf.Logging.Prefix = f.Value.String()
 		case "level":
-			level, err := strconv.Atoi(f.Value.String())
-			if err != nil {
-				panic(err)
-			}
-			config.Conf.Logging.Level = level
+			config.Conf.Logging.Level = f.Value.String()
 		case "out":
 			config.Conf.Logging.Out = f.Value.String()
 		case "printcaller":
@@ -75,7 +72,12 @@ func readConfigFile() error {
 
 func main() {
 	configuire()
-	level := logger.Level(config.Conf.Logging.Level)
+	strLevel := config.Conf.Logging.Level
+	strLevel = strings.ToUpper(strLevel)
+	level, ok := logger.StrLevel[strLevel]
+	if !ok {
+		level = logger.LevelInfo
+	}
 	customLogger, err := logger.New(config.Conf.Logging.Out, config.Conf.Logging.Prefix, config.Conf.Logging.Format, level)
 	if err != nil {
 		panic(err)
@@ -100,7 +102,12 @@ func main() {
 			if err != nil {
 				// TODO
 			}
-			level := logger.Level(config.Conf.Logging.Level)
+			strLevel := config.Conf.Logging.Level
+			strLevel = strings.ToUpper(strLevel)
+			level, ok := logger.StrLevel[strLevel]
+			if !ok {
+				level = logger.LevelInfo
+			}
 			customLogger, err = logger.New(config.Conf.Logging.Out, config.Conf.Logging.Prefix, config.Conf.Logging.Format, level)
 			if err != nil {
 				panic(err)

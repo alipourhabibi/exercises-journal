@@ -14,7 +14,7 @@ type Server struct {
 
 type Logging struct {
 	Prefix      string `yaml:"prefix"`
-	Level       int    `yaml:"level"`
+	Level       string `yaml:"level"`
 	Out         string `yaml:"out"`
 	Printcaller bool   `yaml:"print_caller"`
 	Format      string `yaml:"tme_format"`

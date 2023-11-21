@@ -8,9 +8,11 @@ server:
 logging:
   # prefix for each log
   prefix: Server
-  # log level
-  level: 4
+  # log levels
+  # error, warn, info, debug, trace
+  level: debug
   # log output
+  # /dev/stderr : standard error
   out: /dev/stderr
   # print the function and file that the called the log
   print_caller: true
