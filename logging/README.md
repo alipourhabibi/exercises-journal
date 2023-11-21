@@ -21,7 +21,7 @@ $ ./httpserve --port 8001 --prefix Server -- path /home/ali --level debug --prin
 ```
 docker
 ```sh
-$ docker run -it --network=host ghcr.io/alipourhabibi/exercise-journals-logging:latest /app/httpfileserver --port 8000 --path /path/to/file --level debug --printcaller true
+$ docker run -it --network=host ghcr.io/alipourhabibi/exercise-journals-logging:latest /bin/httpfileserver --port 8000 --path /path/to/file --level debug --printcaller true
 ```
 
 ## Log Levels
@@ -60,6 +60,8 @@ November-21, 2023
 ## Config file
 We have a configuration file that exists near the cli tool which configs the app, \
 The flags will override config in config.yaml file. \
+
+default of logging.out is /dev/stderr which is standard error
 
 config file is yaml, because,
 - It is human-friendly
