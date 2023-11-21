@@ -17,11 +17,11 @@ Also some codes are use from [http-file-server](https://github.com/sgreben/http-
 Clone the repo
 ```sh
 $ go build -o httpserve .
-$ ./httpserve --port 8001 --prefix Server -- path /home/ali --level 4 --printcaller true
+$ ./httpserve --port 8001 --prefix Server -- path /home/ali --level debug --printcaller true
 ```
 docker
 ```sh
-$ docker run -it --network=host ghcr.io/alipourhabibi/exercise-journals-logging:latest /app/httpfileserver --port 8000 --path /path/to/file --level 4 --printcaller true
+$ docker run -it --network=host ghcr.io/alipourhabibi/exercise-journals-logging:latest /app/httpfileserver --port 8000 --path /path/to/file --level debug --printcaller true
 ```
 
 ## Log Levels
@@ -49,6 +49,13 @@ November-15, 2023
 
 November-16, 2023
 - Add config file
+
+November-21, 2023
+- Change log level to string in config
+- Decrease Docker image size
+- Add dynamic conifg reload with SIGHUP
+- Change config file style
+- Change docker image files folder based on linux hierarchy
 
 ## Config file
 We have a configuration file that exists near the cli tool which configs the app, \
