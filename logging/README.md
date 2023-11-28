@@ -17,7 +17,7 @@ Also some codes are use from [http-file-server](https://github.com/sgreben/http-
 Clone the repo
 ```sh
 $ go build -o httpserve .
-$ ./httpserve --port 8001 --prefix Server -- path /home/ali --level debug --printcaller true
+$ ./httpserve --port 8001 --prefix Server --path /usr/share/httpfileserver --level debug --printcaller true
 ```
 docker
 ```sh
