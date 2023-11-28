@@ -68,6 +68,26 @@ func New(file string, prefix string, timeFormat string, level Level) (*Logger, e
 	}, nil
 }
 
+func (l *Logger) ReloadLogger(file string, prefix string, timeFormat string, level Level) *Logger {
+	out, err := os.OpenFile(file, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	if err != nil {
+		l.Info("msg", "can reload logger new output file; will use the prevous one", "new", file, "previous", l.GetOutput().Name())
+		out = l.GetOutput()
+		return &Logger{
+			timeFormat: timeFormat,
+			output:     out,
+			prefix:     prefix,
+			level:      level,
+		}
+	}
+	return &Logger{
+		timeFormat: timeFormat,
+		output:     out,
+		prefix:     prefix,
+		level:      level,
+	}
+}
+
 func (l *Logger) SetLevel(level Level) {
 	l.level = level
 }

@@ -143,10 +143,7 @@ func main() {
 			if !ok {
 				level = logger.LevelInfo
 			}
-			customLogger, err = logger.New(config.Conf.Logging.Out, config.Conf.Logging.Prefix, config.Conf.Logging.Format, level)
-			if err != nil {
-				panic(err)
-			}
+			customLogger = customLogger.ReloadLogger(config.Conf.Logging.Out, config.Conf.Logging.Prefix, config.Conf.Logging.Format, level)
 			customLogger.SetPrintCaller(config.Conf.Logging.Printcaller)
 			h2.SetLogger(*customLogger)
 			state = waitForSignal
