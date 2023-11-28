@@ -17,7 +17,7 @@ type Logging struct {
 	Level       string `yaml:"level"`
 	Out         string `yaml:"out"`
 	Printcaller bool   `yaml:"print_caller"`
-	Format      string `yaml:"tme_format"`
+	Format      string `yaml:"time_format"`
 }
 
 type config struct {
