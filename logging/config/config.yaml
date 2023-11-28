@@ -4,7 +4,7 @@ server:
   # the route which you access the file server
   route: /
   # path to the folder you are serving
-  path: /home/ali
+  path: /usr/share/httpfileserver
 logging:
   # prefix for each log
   prefix: Server
