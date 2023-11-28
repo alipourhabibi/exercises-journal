@@ -135,7 +135,9 @@ func main() {
 			// set it to http
 			err := readConfigFile()
 			if err != nil {
-				// TODO
+				customLogger.Info("can't read config file for reload; will use the previous logger", "error", err.Error())
+				state = waitForSignal
+				continue
 			}
 			strLevel := config.Conf.Logging.Level
 			strLevel = strings.ToUpper(strLevel)
