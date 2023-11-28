@@ -13,14 +13,14 @@ import (
 	"github.com/alipourhabibi/exercises-journal/logging/logger"
 )
 
-var port = flag.Uint("port", 0, "http file server port")
-var prefix = flag.String("prefix", "Server", "prefix for logs")
-var route = flag.String("route", "/", "http route")
-var path = flag.String("path", "/usr/share/httpfileserver", "file path in os")
+var port = flag.Uint("port", 8000, "port which is used for the http file server")
+var prefix = flag.String("prefix", "Server", "prefix for the printed logs")
+var route = flag.String("route", "/", "http route which is server on browser")
+var path = flag.String("path", "/usr/share/httpfileserver", "directory that the files in that are being served")
 var logLevel = flag.String("level", "info", "log level")
-var outFlie = flag.String("out", "", "output file")
-var printCallerstr = flag.String("printcaller", "false", "prints the caller function and file")
-var configFile = flag.String("configfile", "", "config file")
+var outFlie = flag.String("out", "/dev/stderr", "logs output file")
+var printCallerstr = flag.String("printcaller", "false", "prints the caller function and file; usefull for debugging")
+var configFile = flag.String("configfile", "/etc/httpfileserver/config.yaml", "path to the config file")
 
 func configuire() {
 	flag.Parse()
@@ -30,6 +30,7 @@ func configuire() {
 	var err error
 	err = readConfigFile()
 	if err != nil {
+		// config file is mandatory
 		panic(err)
 	}
 	flag.Visit(func(f *flag.Flag) {
