@@ -16,7 +16,7 @@ import (
 var port = flag.Uint("port", 0, "http file server port")
 var prefix = flag.String("prefix", "Server", "prefix for logs")
 var route = flag.String("route", "/", "http route")
-var path = flag.String("path", "/usr/share/httpfileserver/default", "file path in os")
+var path = flag.String("path", "/usr/share/httpfileserver", "file path in os")
 var logLevel = flag.String("level", "info", "log level")
 var outFlie = flag.String("out", "", "output file")
 var printCallerstr = flag.String("printcaller", "false", "prints the caller function and file")
@@ -66,7 +66,38 @@ func readConfigFile() error {
 	if err != nil {
 		return err
 	}
+	checkDefaults()
 	return nil
+}
+
+func checkDefaults() {
+	if config.Conf.Logging.Level == "" {
+		config.Conf.Logging.Level = "info"
+	}
+
+	if config.Conf.Logging.Out == "" {
+		config.Conf.Logging.Out = "/dev/stderr"
+	}
+
+	if config.Conf.Logging.Format == "" {
+		config.Conf.Logging.Format = "2006-01-02 15:04:05"
+	}
+
+	if config.Conf.Logging.Prefix == "" {
+		config.Conf.Logging.Prefix = "Server"
+	}
+
+	if config.Conf.Server.Path == "" {
+		config.Conf.Server.Path = "/usr/share/httpfileserver"
+	}
+
+	if config.Conf.Server.Route == "" {
+		config.Conf.Server.Route = "/"
+	}
+
+	if config.Conf.Server.Port == 0 {
+		config.Conf.Server.Port = 8000
+	}
 }
 
 func main() {
