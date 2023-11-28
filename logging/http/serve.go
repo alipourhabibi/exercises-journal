@@ -68,16 +68,35 @@ func (f *fileServer) ServerNil() bool {
 	return f.server == nil
 }
 
-func NewFileServer(logger logger.Logger, path, route string) *fileServer {
+func NewFileServer(logger logger.Logger, path, route string) (*fileServer, error) {
+	stat, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		// Make directory
+		logger.Info("msg", "creating direcotry", "path", path)
+		err = os.Mkdir(path, 0777)
+		if err != nil {
+			logger.Error("msg", err.Error())
+			return nil, err
+		}
+	} else if !stat.IsDir() {
+		// Path exists but is not directory
+		err = fmt.Errorf("path exists but is not directory")
+		logger.Error("msg", err.Error(), "path", path)
+		return nil, err
+	}
 	return &fileServer{
 		logger: logger,
 		route:  route,
 		path:   path,
-	}
+	}, nil
 }
 
 func (f *fileServer) SetLogger(logger logger.Logger) {
 	f.logger = logger
+	f.logger.Info("msg", "logger has changed",
+		"level", logger.GetLevel(), "output", logger.GetOutput().Name(),
+		"print_caller", logger.GetPrintCaller(),
+		"prefix", logger.GetPrefix(), "time_format", logger.GetTimeFromat())
 }
 
 type responseLogger struct {

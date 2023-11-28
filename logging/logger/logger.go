@@ -46,7 +46,19 @@ type Logger struct {
 func New(file string, prefix string, timeFormat string, level Level) (*Logger, error) {
 	out, err := os.OpenFile(file, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
-		panic(err)
+		file = os.Stderr.Name()
+		out, err := os.OpenFile(file, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+		if err != nil {
+			return nil, err
+		}
+		logger := &Logger{
+			timeFormat: timeFormat,
+			output:     out,
+			prefix:     prefix,
+			level:      level,
+		}
+		logger.Info("msg", "can't open/create log output; will use Stderr")
+		return logger, nil
 	}
 	return &Logger{
 		timeFormat: timeFormat,
@@ -68,8 +80,24 @@ func (l *Logger) SetOutput(out *os.File) {
 	l.output = out
 }
 
+func (l *Logger) GetOutput() *os.File {
+	return l.output
+}
+
 func (l *Logger) SetPrintCaller(b bool) {
 	l.printCaller = b
+}
+
+func (l *Logger) GetPrintCaller() bool {
+	return l.printCaller
+}
+
+func (l *Logger) GetTimeFromat() string {
+	return l.timeFormat
+}
+
+func (l *Logger) GetPrefix() string {
+	return l.prefix
 }
 
 func (l *Logger) log(ctx context.Context, level Level, args ...any) {

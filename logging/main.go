@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"log"
 	"os"
 	"os/signal"
 	"strconv"
@@ -17,7 +16,7 @@ import (
 var port = flag.Uint("port", 0, "http file server port")
 var prefix = flag.String("prefix", "Server", "prefix for logs")
 var route = flag.String("route", "/", "http route")
-var path = flag.String("path", "/home/ali", "file path in os")
+var path = flag.String("path", "/usr/share/httpfileserver/default", "file path in os")
 var logLevel = flag.String("level", "info", "log level")
 var outFlie = flag.String("out", "", "output file")
 var printCallerstr = flag.String("printcaller", "false", "prints the caller function and file")
@@ -80,10 +79,14 @@ func main() {
 	}
 	customLogger, err := logger.New(config.Conf.Logging.Out, config.Conf.Logging.Prefix, config.Conf.Logging.Format, level)
 	if err != nil {
+		// Unexpected behaviout happened
 		panic(err)
 	}
 	customLogger.SetPrintCaller(config.Conf.Logging.Printcaller)
-	h2 := http.NewFileServer(*customLogger, config.Conf.Server.Path, config.Conf.Server.Route)
+	h2, err := http.NewFileServer(*customLogger, config.Conf.Server.Path, config.Conf.Server.Route)
+	if err != nil {
+		os.Exit(1)
+	}
 	h2.SetupServer(config.Conf.Server.Port)
 	go h2.Run()
 
@@ -123,7 +126,7 @@ func main() {
 				syscall.SIGQUIT)
 
 			sig := <-signalCh
-			log.Println("signal recieved: ", sig)
+			customLogger.Info("msg", "signal recieved", "signal", sig)
 			switch sig {
 			case syscall.SIGHUP:
 				state = reconfigureStatus
