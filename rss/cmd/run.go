@@ -26,7 +26,13 @@ var runCmd = &cobra.Command{
 		}
 		rssService, err := rss.New(
 			rss.WithLogger(logger.Logger()),
+			rss.WithFeeds("config/rss.yaml"),
+			rss.WithInterval(config.Conf.Http.Interval),
+			rss.WithRetInterval(config.Conf.Http.RetryInterval),
 		)
+		if err != nil {
+			return err
+		}
 
 		err = rssService.Serve()
 		if err != nil {
