@@ -1,6 +1,10 @@
 package rss
 
 import (
+	"encoding/xml"
+	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"time"
 
@@ -94,4 +98,25 @@ func (rs *RssService) Serve() error {
 
 func (rs *RssService) asyncFeedCheck(feed string) {
 	rs.logger.Sugar().Debugw("asyncFeedCheck", "feed", feed)
+
+	resp, err := http.Get(feed)
+	if err != nil {
+		// TODO
+		rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error())
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		// TODO
+		rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error())
+	}
+
+	temp := RssFeed{}
+	err = xml.Unmarshal(body, &temp)
+	fmt.Println(string(body), err, temp)
+	if err != nil {
+		// TODO
+		rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error())
+	}
+	rs.logger.Sugar().Debugw("xml", "content", temp)
 }
