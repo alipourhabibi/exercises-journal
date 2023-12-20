@@ -16,11 +16,10 @@ http:
   # s for second
   # m for minute
   # h for hour
-  # d for day
-  # w for week
   interval: 50s
   # destination host
   destination: localhost:8000
   # s for second
   # m for minute
+  # h for hour
   retry_interval: 50s
