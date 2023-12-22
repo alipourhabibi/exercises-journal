@@ -1,6 +1,7 @@
 package rss
 
 import (
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -8,6 +9,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/alipourhabibi/exercises-journal/rss/config"
+	"github.com/alipourhabibi/exercises-journal/rss/internal/core/services/memdb"
+	"github.com/alipourhabibi/exercises-journal/rss/internal/core/services/server"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
 )
@@ -19,6 +23,8 @@ type RssService struct {
 	links       []string
 	interval    time.Duration
 	retinterval time.Duration
+	db          *memdb.MemDBService
+	server      *server.ServerService
 }
 
 func New(cfgs ...RssConfiguration) (*RssService, error) {
@@ -77,6 +83,26 @@ func WithRetInterval(interval string) RssConfiguration {
 	}
 }
 
+func WithNewMemDB() RssConfiguration {
+	return func(rs *RssService) error {
+		db, err := memdb.New(
+			memdb.WithNewDB(),
+		)
+		if err != nil {
+			return err
+		}
+		rs.db = db
+		return nil
+	}
+}
+
+func WithServerService(server *server.ServerService) RssConfiguration {
+	return func(rs *RssService) error {
+		rs.server = server
+		return nil
+	}
+}
+
 func (rs *RssService) Serve() error {
 	rs.logger.Sugar().Debugw("Rss", "files", rs.links)
 	rs.logger.Sugar().Debugw("Intervals", "interval", rs.interval, "retry-interval", rs.retinterval)
@@ -96,27 +122,93 @@ func (rs *RssService) Serve() error {
 	}
 }
 
+func (rs *RssService) getFeed(feed string) (RssFeed, error) {
+	resp, err := http.Get(feed)
+	if err != nil {
+		rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error())
+		return RssFeed{}, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		err = fmt.Errorf("Status Code Not 200: %d", resp.StatusCode)
+		rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error())
+		return RssFeed{}, err
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error())
+		return RssFeed{}, err
+	}
+
+	rss := RssFeed{}
+	err = xml.Unmarshal(body, &rss)
+	if err != nil {
+		rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error())
+		return RssFeed{}, err
+	}
+	return rss, nil
+}
+
 func (rs *RssService) asyncFeedCheck(feed string) {
 	rs.logger.Sugar().Debugw("asyncFeedCheck", "feed", feed)
 
-	resp, err := http.Get(feed)
+	rss, err := rs.getFeed(feed)
 	if err != nil {
-		// TODO
 		rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error())
-	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
 		// TODO
-		rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error())
+		return
 	}
 
-	temp := RssFeed{}
-	err = xml.Unmarshal(body, &temp)
-	fmt.Println(string(body), err, temp)
-	if err != nil {
-		// TODO
-		rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error())
+	var lastBuildParsed time.Time
+	lastBuld := rs.db.GetKey(feed)
+	if lastBuld != "" {
+		lastBuildParsed, err = Date(lastBuld).Parse()
+		if err != nil {
+			rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error())
+			// TODO
+			return
+		}
+
+		newBuildParsed, err := rss.Channel.LastBuildDate.Parse()
+		if err != nil {
+			rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error())
+			// TODO
+			return
+		}
+
+		if lastBuildParsed.Unix() >= newBuildParsed.Unix() {
+			rs.logger.Sugar().Infow("asyncFeedCheck", "status", "already checked", "feed", feed)
+			return
+		}
 	}
-	rs.logger.Sugar().Debugw("xml", "content", temp)
+
+	items := []Item{}
+	for _, v := range rss.Channel.Item {
+		if time, err := v.PubDate.Parse(); err != nil {
+			rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error(), "action", "continuing reading oterhs")
+			continue // TODO
+		} else if time.Unix() > lastBuildParsed.Unix() {
+			items = append(items, v)
+		}
+	}
+	rs.logger.Sugar().Debugw("asyncFeedCheck", "items", items)
+
+	// Sending to destinatio
+	rs.logger.Sugar().Debugw("asyncFeedCheck", "headers", config.Conf.Http.Headers)
+	itemsByte, err := json.Marshal(items)
+	if err != nil {
+		rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error())
+		return
+	}
+	err = rs.server.Send(itemsByte, config.Conf.Http.Headers)
+	if err != nil {
+		rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error())
+		return
+	}
+
+	rs.db.SetKey(feed, string(rss.Channel.LastBuildDate))
+
+	rs.logger.Sugar().Debugw("rss", "last_build_date", rss.Channel.LastBuildDate)
 }

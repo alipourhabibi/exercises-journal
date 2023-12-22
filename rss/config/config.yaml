@@ -1,5 +1,5 @@
 zaplogger:
-  level: debug
+  level: info
   encoding: json
   outputPaths: ["stdout"]
   errorOutputPaths: ["stderr"]
@@ -12,13 +12,21 @@ zaplogger:
     levelEncoder: lowercase
 
 http:
+  headers:
+    RSS: [RSS]
+    RSS2: [RSS2]
   # interval which to send data to the server
   # s for second
   # m for minute
   # h for hour
-  interval: 50s
+  interval: 3s
   # destination host
-  destination: localhost:8000
+  destination: http://localhost:8000
+  # timeout for sending to destination
+  # s for second
+  # m for minute
+  # h for hour
+  timeout: 10s
   # s for second
   # m for minute
   # h for hour

@@ -13,9 +13,11 @@ type config struct {
 }
 
 type Http struct {
-	Interval      string `yaml:"interval"`
-	Destination   string `yaml:"destination"`
-	RetryInterval string `yaml:"retry_interval"`
+	Interval      string              `yaml:"interval"`
+	Destination   string              `yaml:"destination"`
+	RetryInterval string              `yaml:"retry_interval"`
+	Headers       map[string][]string `yaml:"headers"`
+	Timeout       string              `yaml:"timeout"`
 }
 
 var Conf = config{}
