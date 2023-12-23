@@ -5,6 +5,7 @@ go 1.21.4
 require (
 	github.com/spf13/cobra v1.8.0
 	go.uber.org/zap v1.26.0
+	golang.org/x/exp v0.0.0-20231219180239-dc181d75b848
 	gopkg.in/yaml.v2 v2.4.0
 )
 

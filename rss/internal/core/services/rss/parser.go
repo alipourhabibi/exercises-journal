@@ -7,6 +7,7 @@ import (
 type Date string
 
 const wordpressDateFormat = "Mon, 02 Jan 2006 15:04 EDT"
+const wordpressDateFormat2 = "Mon, 02 Jan 2006 15:04:02 GMT"
 
 // Channel struct for RSS
 type Channel struct {
@@ -51,6 +52,9 @@ func (d Date) Parse() (time.Time, error) {
 		if err != nil {
 			t, err = time.Parse(time.RFC3339, string(d)) // AtomS
 			if err != nil {
+				t, err = time.Parse(time.RFC1123, string(d))
+				if err != nil {
+				}
 				return time.Time{}, err
 			}
 		}

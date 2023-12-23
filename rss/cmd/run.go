@@ -46,6 +46,7 @@ var runCmd = &cobra.Command{
 			rss.WithInterval(config.Conf.Http.Interval),
 			rss.WithRetInterval(config.Conf.Http.RetryInterval),
 			rss.WithNewMemDB(),
+			rss.WithNewRetryMemDB(),
 			rss.WithServerService(serverService),
 		)
 		if err != nil {

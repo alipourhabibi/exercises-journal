@@ -1,5 +1,7 @@
 package memdb
 
+import "golang.org/x/exp/maps"
+
 type MemDBConfiguration func(*MemDBService) error
 
 type MemDBService struct {
@@ -30,4 +32,12 @@ func (m *MemDBService) GetKey(key string) string {
 
 func (m *MemDBService) SetKey(key string, value string) {
 	m.db[key] = value
+}
+
+func (m *MemDBService) GetAllKeys() []string {
+	return maps.Keys(m.db)
+}
+
+func (m *MemDBService) DelKey(key string) {
+	delete(m.db, key)
 }
