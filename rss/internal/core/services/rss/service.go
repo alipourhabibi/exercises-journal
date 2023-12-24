@@ -88,24 +88,57 @@ func WithNewMemDB() RssConfiguration {
 	return func(rs *RssService) error {
 		db, err := memdb.New(
 			memdb.WithNewDB(),
+			memdb.WithPersist(config.Conf.DB.Persist),
+			memdb.WithPersistInterval(config.Conf.DB.PersistInterval),
+			memdb.WithEviction(config.Conf.DB.Evict),
+			memdb.WithEvictionInterval(config.Conf.DB.EvictionInterval),
+			memdb.WithPath(config.Conf.DB.DBPath),
+			memdb.WithLogger(rs.logger),
 		)
 		if err != nil {
 			return err
 		}
 		rs.db = db
+		if db.GetEviction() {
+			go rs.db.RunEvictor()
+		}
+		if db.GetPersist() {
+			go rs.db.RunPersistor()
+		}
 		return nil
 	}
 }
 
+type evictorMax struct{}
+
+func (e evictorMax) Run(m memdb.DB) error {
+	// TODO write logic to evict
+	return nil
+}
+
 func WithNewRetryMemDB() RssConfiguration {
 	return func(rs *RssService) error {
+		evictorMaxSize := evictorMax{}
 		db, err := memdb.New(
 			memdb.WithNewDB(),
+			memdb.WithPersist(config.Conf.DB.Persist),
+			memdb.WithPersistInterval(config.Conf.DB.PersistInterval),
+			memdb.WithEviction(config.Conf.DB.Evict),
+			memdb.WithEvictionInterval(config.Conf.DB.EvictionInterval),
+			memdb.WithPath(config.Conf.DB.RetryDBPath),
+			memdb.WithLogger(rs.logger),
+			memdb.WithEvictors(evictorMaxSize),
 		)
 		if err != nil {
 			return err
 		}
 		rs.retryDB = db
+		if db.GetEviction() {
+			go rs.retryDB.RunEvictor()
+		}
+		if db.GetPersist() {
+			go rs.retryDB.RunPersistor()
+		}
 		return nil
 	}
 }
@@ -191,8 +224,8 @@ func (rs *RssService) asyncFeedCheck(feed string) {
 
 	var lastBuildParsed time.Time
 	lastBuld := rs.db.GetKey(feed)
-	if lastBuld != "" {
-		lastBuildParsed, err = Date(lastBuld).Parse()
+	if lastBuld.Value != "" {
+		lastBuildParsed, err = Date(lastBuld.Value).Parse()
 		if err != nil {
 			rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error())
 			return
@@ -231,16 +264,20 @@ func (rs *RssService) asyncFeedCheck(feed string) {
 	err = rs.server.Send(itemsByte, config.Conf.Http.Headers)
 	if err != nil {
 		rs.db.DelKey(feed)
-		rs.retryDB.SetKey(feed, fmt.Sprintf("%d", time.Now().Unix()))
+		rs.retryDB.SetKey(feed, memdb.Data{
+			Value: fmt.Sprintf("%d", time.Now().Unix()),
+		})
 		rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error())
 		return
 	}
 
 	rs.logger.Sugar().Debugw("setting feed to db", "feed", feed)
-	rs.db.SetKey(feed, string(rss.Channel.LastBuildDate))
+	rs.db.SetKey(feed, memdb.Data{
+		Value: string(rss.Channel.LastBuildDate),
+	})
 	// removing from retry as it is ok
-	// TODO delete if it was success
-	// Possible solution using channels to communicate
+	// delete if it was success
+	// TODO Possible better solution using channels to communicate
 	rs.retryDB.DelKey(feed)
 
 	rs.logger.Sugar().Debugw("rss", "last_build_date", rss.Channel.LastBuildDate)

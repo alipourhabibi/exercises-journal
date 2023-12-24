@@ -10,6 +10,7 @@ import (
 type config struct {
 	Http      Http       `yaml:"http"`
 	ZapLogger zap.Config `yaml:"zaplogger"`
+	DB        DB         `yaml:"db"`
 }
 
 type Http struct {
@@ -18,6 +19,15 @@ type Http struct {
 	RetryInterval string              `yaml:"retry_interval"`
 	Headers       map[string][]string `yaml:"headers"`
 	Timeout       string              `yaml:"timeout"`
+}
+
+type DB struct {
+	Persist          bool   `yaml:"persist"`
+	PersistInterval  string `yaml:"persist_interval"`
+	Evict            bool   `yaml:"eviction"`
+	EvictionInterval string `yaml:"eviction_interval"`
+	DBPath           string `yaml:"db_path"`
+	RetryDBPath      string `yaml:"retry_db_path"`
 }
 
 var Conf = config{}

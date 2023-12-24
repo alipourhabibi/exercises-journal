@@ -1,5 +1,5 @@
 zaplogger:
-  level: info
+  level: debug
   encoding: json
   outputPaths: ["stdout"]
   errorOutputPaths: ["stderr"]
@@ -31,3 +31,11 @@ http:
   # m for minute
   # h for hour
   retry_interval: 50s
+
+db:
+  persist: true
+  persist_interval: 3s
+  eviction: true
+  eviction_interval: 3s
+  db_path: /tmp/db.txt
+  retry_db_path: /tmp/retdb.txt
