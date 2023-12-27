@@ -30,12 +30,13 @@ http:
   # s for second
   # m for minute
   # h for hour
-  retry_interval: 50s
+  retry_interval: 10s
 
 db:
   persist: true
   persist_interval: 3s
-  eviction: true
+  eviction: false
   eviction_interval: 3s
   db_path: /tmp/db.txt
   retry_db_path: /tmp/retdb.txt
+  max_ret_db_data: 10000

@@ -11,19 +11,36 @@ import (
 type MemDBConfiguration func(*MemDBService) error
 
 type Data struct {
-	Value string
-	ttl   int64
+	T   time.Time
+	ttl int64
 }
 
-type DB map[string]Data
+type LRUCache struct {
+	dataMap   map[string]Data
+	dataOrder []string
+	capacity  int
+}
+
+func (lru *LRUCache) updateOrder(key string) {
+	// Remove the key from the current position
+	for i, k := range lru.dataOrder {
+		if k == key {
+			lru.dataOrder = append(lru.dataOrder[:i], lru.dataOrder[i+1:]...)
+			break
+		}
+	}
+
+	// Add the key to the end
+	lru.dataOrder = append(lru.dataOrder, key)
+}
 
 type Evictor interface {
-	Run(DB) error
+	Run(LRUCache) error
 }
 
 type MemDBService struct {
 	sync.RWMutex
-	db               DB
+	db               LRUCache
 	persist          bool
 	persistInterval  int64
 	eviction         bool
@@ -44,9 +61,23 @@ func New(cfgs ...MemDBConfiguration) (*MemDBService, error) {
 	return ms, nil
 }
 
-func WithNewDB() MemDBConfiguration {
+func WithNewDB(capacity int, initialKeys []string) MemDBConfiguration {
 	return func(ms *MemDBService) error {
-		ms.db = map[string]Data{}
+		if initialKeys == nil {
+			initialKeys = []string{}
+		}
+		db := map[string]Data{}
+		for _, v := range initialKeys {
+			db[v] = Data{
+				T:   time.Time{},
+				ttl: 0,
+			}
+		}
+		ms.db = LRUCache{
+			dataMap:   db,
+			dataOrder: initialKeys,
+			capacity:  capacity,
+		}
 		return nil
 	}
 }
@@ -116,28 +147,77 @@ func (m *MemDBService) GetEviction() bool {
 	return m.eviction
 }
 
-func (m *MemDBService) GetKey(key string) Data {
+func (m *MemDBService) GetKey(key string) (Data, bool) {
 	m.RLock()
 	defer m.RUnlock()
-	return m.db[key]
+	data, ok := m.db.dataMap[key]
+	if ok {
+		m.db.updateOrder(key)
+		return data, ok
+	}
+	return data, false
 }
 
 func (m *MemDBService) SetKey(key string, value Data) {
 	m.Lock()
 	defer m.Unlock()
-	m.db[key] = value
+	/*
+		value.t = time.Now()
+		m.db[key] = value
+	*/
+	if len(m.db.dataOrder) >= m.db.capacity {
+		// Remove the oldest item
+		oldestKey := m.db.dataOrder[0]
+		delete(m.db.dataMap, oldestKey)
+		m.db.dataOrder = m.db.dataOrder[1:]
+	}
+
+	// Add the new item
+	if _, ok := m.db.dataMap[key]; ok {
+		return
+	}
+	m.db.dataMap[key] = value
+	m.db.dataOrder = append(m.db.dataOrder, key)
+	m.logger.Sugar().Debugw("SetKey", "map", m.db.dataMap, "ordered", m.db.dataOrder)
 }
 
 func (m *MemDBService) GetAllKeys() []string {
 	m.RLock()
 	defer m.RUnlock()
-	return maps.Keys(m.db)
+	return maps.Keys(m.db.dataMap)
 }
 
 func (m *MemDBService) DelKey(key string) {
 	m.Lock()
 	defer m.Unlock()
-	delete(m.db, key)
+	if _, ok := m.db.dataMap[key]; ok {
+		// Delete the key from the map
+		delete(m.db.dataMap, key)
+
+		// Remove the key from the order slice
+		for i, k := range m.db.dataOrder {
+			if k == key {
+				m.db.dataOrder = append(m.db.dataOrder[:i], m.db.dataOrder[i+1:]...)
+				break
+			}
+		}
+	}
+}
+
+// Delete entry with the given and key and its index int the dataOrder
+func (m *MemDBService) DelKeyWithIndexKey(key string, index int) {
+	m.Lock()
+	defer m.Unlock()
+	if _, ok := m.db.dataMap[key]; ok {
+		if key != m.db.dataOrder[index] {
+			// Key and index does not match
+			return
+		}
+		// Delete the key from the map
+		delete(m.db.dataMap, key)
+
+		m.db.dataOrder = append(m.db.dataOrder[:index], m.db.dataOrder[index+1:]...)
+	}
 }
 
 func (m *MemDBService) RunEvictor() {
@@ -186,7 +266,8 @@ func (m *MemDBService) RunPersistor() {
 	}
 }
 
-func (m *MemDBService) write(path string, db DB) error {
+// write persists the data into the disk
+func (m *MemDBService) write(path string, db LRUCache) error {
 	m.Lock()
 	defer m.Unlock()
 	m.logger.Sugar().Debugw("Write", "path", path, "db", db)

@@ -19,8 +19,8 @@ import (
 type RssConfiguration func(*RssService) error
 
 type RssService struct {
-	logger      *zap.Logger
-	links       []string
+	logger *zap.Logger
+	// links       []string
 	interval    time.Duration
 	retinterval time.Duration
 	db          *memdb.MemDBService
@@ -57,7 +57,24 @@ func WithFeeds(file string) RssConfiguration {
 		if err != nil {
 			return err
 		}
-		rs.links = rss["links"]
+		links := rss["links"]
+		db, err := memdb.New(
+			memdb.WithNewDB(int(config.Conf.DB.MaxRetDBData), links),
+			memdb.WithPersist(false),
+			memdb.WithEviction(false),
+			memdb.WithPath(config.Conf.DB.DBPath),
+			memdb.WithLogger(rs.logger),
+		)
+		if err != nil {
+			return err
+		}
+		rs.db = db
+		if db.GetEviction() {
+			go rs.db.RunEvictor()
+		}
+		if db.GetPersist() {
+			go rs.db.RunPersistor()
+		}
 		return nil
 	}
 }
@@ -84,35 +101,9 @@ func WithRetInterval(interval string) RssConfiguration {
 	}
 }
 
-func WithNewMemDB() RssConfiguration {
-	return func(rs *RssService) error {
-		db, err := memdb.New(
-			memdb.WithNewDB(),
-			memdb.WithPersist(config.Conf.DB.Persist),
-			memdb.WithPersistInterval(config.Conf.DB.PersistInterval),
-			memdb.WithEviction(config.Conf.DB.Evict),
-			memdb.WithEvictionInterval(config.Conf.DB.EvictionInterval),
-			memdb.WithPath(config.Conf.DB.DBPath),
-			memdb.WithLogger(rs.logger),
-		)
-		if err != nil {
-			return err
-		}
-		rs.db = db
-		if db.GetEviction() {
-			go rs.db.RunEvictor()
-		}
-		if db.GetPersist() {
-			go rs.db.RunPersistor()
-		}
-		return nil
-	}
-}
-
 type evictorMax struct{}
 
-func (e evictorMax) Run(m memdb.DB) error {
-	// TODO write logic to evict
+func (e evictorMax) Run(m memdb.LRUCache) error {
 	return nil
 }
 
@@ -120,7 +111,7 @@ func WithNewRetryMemDB() RssConfiguration {
 	return func(rs *RssService) error {
 		evictorMaxSize := evictorMax{}
 		db, err := memdb.New(
-			memdb.WithNewDB(),
+			memdb.WithNewDB(int(config.Conf.DB.MaxRetDBData), nil),
 			memdb.WithPersist(config.Conf.DB.Persist),
 			memdb.WithPersistInterval(config.Conf.DB.PersistInterval),
 			memdb.WithEviction(config.Conf.DB.Evict),
@@ -150,13 +141,98 @@ func WithServerService(server *server.ServerService) RssConfiguration {
 	}
 }
 
-func (rs *RssService) Serve() error {
+func (rs *RssService) SetLogger(logger *zap.Logger) {
+	rs.logger = logger
+}
+
+func (rs *RssService) SetServer(server *server.ServerService) {
+	rs.server = server
+}
+
+func (rs *RssService) SetRetDB() {
+	evictorMaxSize := evictorMax{}
+	db, err := memdb.New(
+		memdb.WithNewDB(int(config.Conf.DB.MaxRetDBData), nil),
+		memdb.WithPersist(config.Conf.DB.Persist),
+		memdb.WithPersistInterval(config.Conf.DB.PersistInterval),
+		memdb.WithEviction(config.Conf.DB.Evict),
+		memdb.WithEvictionInterval(config.Conf.DB.EvictionInterval),
+		memdb.WithPath(config.Conf.DB.RetryDBPath),
+		memdb.WithLogger(rs.logger),
+		memdb.WithEvictors(evictorMaxSize),
+	)
+	if err != nil {
+		rs.logger.Sugar().Errorw("SetRetDB", "error", err)
+		return
+	}
+	rs.retryDB = db
+	if db.GetEviction() {
+		go rs.retryDB.RunEvictor()
+	}
+	if db.GetPersist() {
+		go rs.retryDB.RunPersistor()
+	}
+}
+
+func (rs *RssService) SetInterval(interval string) {
+	duration, err := time.ParseDuration(interval)
+	if err != nil {
+		rs.logger.Sugar().Errorw("SetInterval", "error", err)
+		return
+	}
+	rs.interval = duration
+}
+
+func (rs *RssService) SetRetInterval(interval string) {
+	duration, err := time.ParseDuration(interval)
+	if err != nil {
+		rs.logger.Sugar().Errorw("SetRetInterval", "error", err)
+		return
+	}
+	rs.retinterval = duration
+}
+
+// TODO Think
+func (rs *RssService) SetNewFeeds(file string) {
+	f, err := os.ReadFile(file)
+	if err != nil {
+		rs.logger.Sugar().Errorw("SetNewFeeds", "error", err)
+		return
+	}
+	var rss map[string][]string
+	err = yaml.Unmarshal(f, &rss)
+	if err != nil {
+		rs.logger.Sugar().Errorw("SetNewFeeds", "error", err)
+		return
+	}
+	links := rss["links"]
+	db, err := memdb.New(
+		memdb.WithNewDB(int(config.Conf.DB.MaxRetDBData), links),
+		memdb.WithPersist(false),
+		memdb.WithEviction(false),
+		memdb.WithPath(config.Conf.DB.DBPath),
+		memdb.WithLogger(rs.logger),
+	)
+	if err != nil {
+		rs.logger.Sugar().Errorw("SetNewFeeds", "error", err)
+		return
+	}
+	rs.db = db
+	if db.GetEviction() {
+		go rs.db.RunEvictor()
+	}
+	if db.GetPersist() {
+		go rs.db.RunPersistor()
+	}
+}
+
+func (rs *RssService) Serve(ch chan struct{}) {
 	go rs.retryAll()
 
-	rs.logger.Sugar().Debugw("Rss", "files", rs.links)
+	rs.logger.Sugar().Debugw("Rss", "files", rs.db.GetAllKeys())
 	rs.logger.Sugar().Debugw("Intervals", "interval", rs.interval, "retry-interval", rs.retinterval)
 
-	for _, v := range rs.links {
+	for _, v := range rs.db.GetAllKeys() {
 		go rs.asyncFeedCheck(v)
 	}
 
@@ -164,9 +240,11 @@ func (rs *RssService) Serve() error {
 	for {
 		select {
 		case <-ticker.C:
-			for _, v := range rs.links {
+			for _, v := range rs.db.GetAllKeys() {
 				go rs.asyncFeedCheck(v)
 			}
+		case <-ch:
+			return
 		}
 	}
 }
@@ -219,13 +297,17 @@ func (rs *RssService) asyncFeedCheck(feed string) {
 	rss, err := rs.getFeed(feed)
 	if err != nil {
 		rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error())
+		rs.db.DelKey(feed)
+		rs.retryDB.SetKey(feed, memdb.Data{
+			T: time.Now(),
+		})
 		return
 	}
 
 	var lastBuildParsed time.Time
-	lastBuld := rs.db.GetKey(feed)
-	if lastBuld.Value != "" {
-		lastBuildParsed, err = Date(lastBuld.Value).Parse()
+	lastBuld, ok := rs.db.GetKey(feed)
+	if ok {
+		lastBuildParsed = lastBuld.T
 		if err != nil {
 			rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error())
 			return
@@ -252,7 +334,7 @@ func (rs *RssService) asyncFeedCheck(feed string) {
 			items = append(items, v)
 		}
 	}
-	rs.logger.Sugar().Debugw("asyncFeedCheck", "items", items)
+	// rs.logger.Sugar().Debugw("asyncFeedCheck", "items", items)
 
 	// Sending to destinatio
 	rs.logger.Sugar().Debugw("asyncFeedCheck", "headers", config.Conf.Http.Headers)
@@ -263,17 +345,23 @@ func (rs *RssService) asyncFeedCheck(feed string) {
 	}
 	err = rs.server.Send(itemsByte, config.Conf.Http.Headers)
 	if err != nil {
+		rs.logger.Sugar().Debugw("DB", "items", rs.retryDB)
+		rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error())
 		rs.db.DelKey(feed)
 		rs.retryDB.SetKey(feed, memdb.Data{
-			Value: fmt.Sprintf("%d", time.Now().Unix()),
+			T: time.Now(),
 		})
-		rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error())
 		return
 	}
 
 	rs.logger.Sugar().Debugw("setting feed to db", "feed", feed)
+	date, err := rss.Channel.LastBuildDate.Parse()
+	if err != nil {
+		rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error())
+		return
+	}
 	rs.db.SetKey(feed, memdb.Data{
-		Value: string(rss.Channel.LastBuildDate),
+		T: date,
 	})
 	// removing from retry as it is ok
 	// delete if it was success

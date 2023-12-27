@@ -28,6 +28,7 @@ type DB struct {
 	EvictionInterval string `yaml:"eviction_interval"`
 	DBPath           string `yaml:"db_path"`
 	RetryDBPath      string `yaml:"retry_db_path"`
+	MaxRetDBData     int64  `yaml:"max_ret_db_data"`
 }
 
 var Conf = config{}
