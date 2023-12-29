@@ -11,6 +11,7 @@ import (
 	"github.com/alipourhabibi/exercises-journal/logging/config"
 	"github.com/alipourhabibi/exercises-journal/logging/http"
 	"github.com/alipourhabibi/exercises-journal/logging/logger"
+	"github.com/alipourhabibi/exercises-journal/logging/rss"
 )
 
 var port = flag.Uint("port", 8000, "port which is used for the http file server")
@@ -21,6 +22,7 @@ var logLevel = flag.String("level", "info", "log level")
 var outFlie = flag.String("out", "/dev/stderr", "logs output file")
 var printCallerstr = flag.String("printcaller", "false", "prints the caller function and file; usefull for debugging")
 var configFile = flag.String("configfile", "/etc/httpfileserver/config.yaml", "path to the config file")
+var isFileServer = flag.Bool("isfileserver", true, "is this app used for serving file")
 
 func configuire() {
 	flag.Parse()
@@ -115,6 +117,18 @@ func main() {
 		panic(err)
 	}
 	customLogger.SetPrintCaller(config.Conf.Logging.Printcaller)
+
+	if !*isFileServer {
+		service, err := rss.NewRssService(config.Conf.Server.Port, customLogger)
+		if err != nil {
+			customLogger.Error("creating rss service", "error", err)
+		}
+		err = service.Run()
+		if err != nil {
+			customLogger.Error("runngin rss service", "error", err)
+			return
+		}
+	}
 	h2, err := http.NewFileServer(*customLogger, config.Conf.Server.Path, config.Conf.Server.Route)
 	if err != nil {
 		os.Exit(1)
