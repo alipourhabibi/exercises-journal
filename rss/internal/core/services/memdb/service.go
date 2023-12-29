@@ -1,6 +1,7 @@
 package memdb
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -220,7 +221,7 @@ func (m *MemDBService) DelKeyWithIndexKey(key string, index int) {
 	}
 }
 
-func (m *MemDBService) RunEvictor() {
+func (m *MemDBService) RunEvictor(ctx context.Context) {
 	m.logger.Sugar().Debugw("start running evictor")
 	ticker := time.NewTicker(time.Duration(m.evictionInterval))
 	for {
@@ -234,6 +235,8 @@ func (m *MemDBService) RunEvictor() {
 					continue
 				}
 			}
+		case <-ctx.Done():
+			return
 			/*
 				go func() {
 					m.logger.Sugar().Debugw("start evicting", "t", t)
@@ -252,7 +255,7 @@ func (m *MemDBService) RunEvictor() {
 	}
 }
 
-func (m *MemDBService) RunPersistor() {
+func (m *MemDBService) RunPersistor(ctx context.Context) {
 	m.logger.Sugar().Debugw("start running persistor")
 	ticker := time.NewTicker(time.Duration(m.persistInterval))
 	for {
@@ -262,6 +265,8 @@ func (m *MemDBService) RunPersistor() {
 				m.logger.Sugar().Debugw("start persisting", "t", t)
 				go m.write(m.path, m.db)
 			}()
+		case <-ctx.Done():
+			return
 		}
 	}
 }

@@ -1,6 +1,7 @@
 package rss
 
 import (
+	"context"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
@@ -46,7 +47,7 @@ func WithLogger(logger *zap.Logger) RssConfiguration {
 	}
 }
 
-func WithFeeds(file string) RssConfiguration {
+func WithFeeds(ctx context.Context, file string) RssConfiguration {
 	return func(rs *RssService) error {
 		f, err := os.ReadFile(file)
 		if err != nil {
@@ -70,10 +71,10 @@ func WithFeeds(file string) RssConfiguration {
 		}
 		rs.db = db
 		if db.GetEviction() {
-			go rs.db.RunEvictor()
+			go rs.db.RunEvictor(ctx)
 		}
 		if db.GetPersist() {
-			go rs.db.RunPersistor()
+			go rs.db.RunPersistor(ctx)
 		}
 		return nil
 	}
@@ -107,7 +108,7 @@ func (e evictorMax) Run(m memdb.LRUCache) error {
 	return nil
 }
 
-func WithNewRetryMemDB() RssConfiguration {
+func WithNewRetryMemDB(ctx context.Context) RssConfiguration {
 	return func(rs *RssService) error {
 		evictorMaxSize := evictorMax{}
 		db, err := memdb.New(
@@ -125,10 +126,10 @@ func WithNewRetryMemDB() RssConfiguration {
 		}
 		rs.retryDB = db
 		if db.GetEviction() {
-			go rs.retryDB.RunEvictor()
+			go rs.retryDB.RunEvictor(ctx)
 		}
 		if db.GetPersist() {
-			go rs.retryDB.RunPersistor()
+			go rs.retryDB.RunPersistor(ctx)
 		}
 		return nil
 	}
@@ -149,7 +150,7 @@ func (rs *RssService) SetServer(server *server.ServerService) {
 	rs.server = server
 }
 
-func (rs *RssService) SetRetDB() {
+func (rs *RssService) SetRetDB(ctx context.Context) {
 	evictorMaxSize := evictorMax{}
 	db, err := memdb.New(
 		memdb.WithNewDB(int(config.Conf.DB.MaxRetDBData), nil),
@@ -167,10 +168,10 @@ func (rs *RssService) SetRetDB() {
 	}
 	rs.retryDB = db
 	if db.GetEviction() {
-		go rs.retryDB.RunEvictor()
+		go rs.retryDB.RunEvictor(ctx)
 	}
 	if db.GetPersist() {
-		go rs.retryDB.RunPersistor()
+		go rs.retryDB.RunPersistor(ctx)
 	}
 }
 
@@ -193,7 +194,7 @@ func (rs *RssService) SetRetInterval(interval string) {
 }
 
 // TODO Think
-func (rs *RssService) SetNewFeeds(file string) {
+func (rs *RssService) SetNewFeeds(ctx context.Context, file string) {
 	f, err := os.ReadFile(file)
 	if err != nil {
 		rs.logger.Sugar().Errorw("SetNewFeeds", "error", err)
@@ -219,15 +220,15 @@ func (rs *RssService) SetNewFeeds(file string) {
 	}
 	rs.db = db
 	if db.GetEviction() {
-		go rs.db.RunEvictor()
+		go rs.db.RunEvictor(ctx)
 	}
 	if db.GetPersist() {
-		go rs.db.RunPersistor()
+		go rs.db.RunPersistor(ctx)
 	}
 }
 
-func (rs *RssService) Serve(ch chan struct{}) {
-	go rs.retryAll()
+func (rs *RssService) Serve(ctx context.Context) {
+	go rs.retryAll(ctx)
 
 	rs.logger.Sugar().Debugw("Rss", "files", rs.db.GetAllKeys())
 	rs.logger.Sugar().Debugw("Intervals", "interval", rs.interval, "retry-interval", rs.retinterval)
@@ -243,13 +244,13 @@ func (rs *RssService) Serve(ch chan struct{}) {
 			for _, v := range rs.db.GetAllKeys() {
 				go rs.asyncFeedCheck(v)
 			}
-		case <-ch:
+		case <-ctx.Done():
 			return
 		}
 	}
 }
 
-func (rs *RssService) retryAll() {
+func (rs *RssService) retryAll(ctx context.Context) {
 	ticker := time.NewTicker(rs.retinterval)
 	for {
 		select {
@@ -258,6 +259,8 @@ func (rs *RssService) retryAll() {
 				rs.logger.Sugar().Infow("retry", "feed", v)
 				go rs.asyncFeedCheck(v)
 			}
+		case <-ctx.Done():
+			return
 		}
 	}
 }

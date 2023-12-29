@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"os"
 	"os/signal"
 	"syscall"
@@ -44,21 +45,23 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		ctx := context.Background()
+		ctx, cancel := context.WithCancel(ctx)
 
 		rssService, err := rss.New(
 			rss.WithLogger(logger.Logger()),
-			rss.WithFeeds("config/rss.yaml"),
+			rss.WithFeeds(ctx, "config/rss.yaml"),
 			rss.WithInterval(config.Conf.Http.Interval),
 			rss.WithRetInterval(config.Conf.Http.RetryInterval),
-			rss.WithNewRetryMemDB(),
+			rss.WithNewRetryMemDB(ctx),
 			rss.WithServerService(serverService),
 		)
 		if err != nil {
+			cancel()
 			return err
 		}
 
-		ch := make(chan struct{})
-		go rssService.Serve(ch)
+		go rssService.Serve(ctx)
 		var state byte
 		const (
 			waitForSignal byte = iota
@@ -68,38 +71,42 @@ var runCmd = &cobra.Command{
 		for {
 			switch state {
 			case reconfigureStatus:
-				// makes new logger
-				// set it to http
+				cancel()
+
+				ctx = context.Background()
+				ctx, cancel = context.WithCancel(ctx)
+
 				err := config.Conf.Load(configFile)
 				if err != nil {
-					logger.Logger().Sugar().Info("can't read config file for reload; will use the previous logger", "error", err.Error())
+					logger.Logger().Sugar().Info("can't read config file for reload; will use the previous settings", "error", err.Error())
 					state = waitForSignal
 					continue
 				}
 				logger, err := zlogger.New(
 					zlogger.WithConfig(),
 				)
-				rssService.SetLogger(logger.Logger())
-				/*
-					rssService.SetRetDB()
-					serverService, err = server.New(
-						server.WithHost(config.Conf.Http.Destination),
-						server.WithTimetout(timeout),
-						server.WithLogger(logger.Logger()),
-					)
-					if err != nil {
-						logger.Logger().Sugar().Errorw("setting up new server", "error", err, "status", "using the previous server")
-					} else {
-						rssService.SetServer(serverService)
-					}
-					rssService.SetInterval(config.Conf.Http.Interval)
-					rssService.SetRetInterval(config.Conf.DB.RetryDBPath)
+				if err != nil {
+					logger.Logger().Sugar().Errorw("setting up new logger", "error", err, "status", "using the previous logger")
+				} else {
+					rssService.SetLogger(logger.Logger())
+				}
 
-					state = waitForSignal
-					ch <- struct{}{}
-					ch = make(chan struct{})
-					rssService.Serve(ch)
-				*/
+				rssService.SetRetDB(ctx)
+				serverService, err = server.New(
+					server.WithHost(config.Conf.Http.Destination),
+					server.WithTimetout(timeout),
+					server.WithLogger(logger.Logger()),
+				)
+				if err != nil {
+					logger.Logger().Sugar().Errorw("setting up new server", "error", err, "status", "using the previous server")
+				} else {
+					rssService.SetServer(serverService)
+				}
+				rssService.SetInterval(config.Conf.Http.Interval)
+				rssService.SetRetInterval(config.Conf.Http.RetryInterval)
+
+				go rssService.Serve(ctx)
+
 				state = waitForSignal
 			case waitForSignal:
 				signal.Notify(signalCh,
@@ -114,6 +121,7 @@ var runCmd = &cobra.Command{
 				case syscall.SIGHUP:
 					state = reconfigureStatus
 				case syscall.SIGQUIT, syscall.SIGINT, syscall.SIGTERM:
+					cancel()
 					return nil
 				}
 
