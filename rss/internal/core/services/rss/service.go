@@ -108,11 +108,11 @@ func (e evictorMax) Run(m memdb.LRUCache) error {
 	return nil
 }
 
-func WithNewRetryMemDB(ctx context.Context) RssConfiguration {
+func WithNewRetryMemDB(ctx context.Context, initialKeys []string) RssConfiguration {
 	return func(rs *RssService) error {
 		evictorMaxSize := evictorMax{}
 		db, err := memdb.New(
-			memdb.WithNewDB(int(config.Conf.DB.MaxRetDBData), nil),
+			memdb.WithNewDB(int(config.Conf.DB.MaxRetDBData), initialKeys),
 			memdb.WithPersist(config.Conf.DB.Persist),
 			memdb.WithPersistInterval(config.Conf.DB.PersistInterval),
 			memdb.WithEviction(config.Conf.DB.Evict),
@@ -140,6 +140,10 @@ func WithServerService(server *server.ServerService) RssConfiguration {
 		rs.server = server
 		return nil
 	}
+}
+
+func (rs *RssService) SetInitialKeysWithPath(path string) error {
+	return rs.retryDB.SetInitialKeysWithPath(path)
 }
 
 func (rs *RssService) SetLogger(logger *zap.Logger) {

@@ -23,3 +23,14 @@ func init() {
 	rootCmd.AddCommand(runCmd)
 
 }
+
+func getConfigFilePath(cmd *cobra.Command) string {
+	configFlag := cmd.Flags().Lookup("config")
+	if configFlag != nil {
+		configFilePath := configFlag.Value.String()
+		if configFilePath != "" {
+			return configFilePath
+		}
+	}
+	return ""
+}

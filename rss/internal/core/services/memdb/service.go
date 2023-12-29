@@ -2,6 +2,8 @@ package memdb
 
 import (
 	"context"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -271,10 +273,51 @@ func (m *MemDBService) RunPersistor(ctx context.Context) {
 	}
 }
 
+func (m *MemDBService) flush() error {
+	m.Lock()
+	defer m.Unlock()
+	m.db = LRUCache{
+		dataMap:   map[string]Data{},
+		dataOrder: []string{},
+		capacity:  m.db.capacity,
+	}
+	return nil
+}
+
+func (m *MemDBService) SetInitialKeysWithPath(path string) error {
+	m.flush()
+	return m.read(path)
+}
+
 // write persists the data into the disk
 func (m *MemDBService) write(path string, db LRUCache) error {
 	m.Lock()
 	defer m.Unlock()
-	m.logger.Sugar().Debugw("Write", "path", path, "db", db)
+	encoded := encodeData(db.dataOrder)
+	os.WriteFile(path, encoded, 0644)
+	m.logger.Sugar().Debugw("Write", "path", path, "db.dataOrder", db.dataOrder)
 	return nil
+}
+
+func (m *MemDBService) read(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	decoded := decodeData(data)
+	for _, v := range decoded {
+		m.SetKey(v, Data{
+			T: time.Now(),
+		})
+	}
+	m.logger.Sugar().Debugw("read", "dataOrder", m.db.dataOrder)
+	return nil
+}
+
+func encodeData(data []string) []byte {
+	return []byte(strings.Join(data, "\n"))
+}
+
+func decodeData(data []byte) []string {
+	return strings.Split(string(data), "\n")
 }

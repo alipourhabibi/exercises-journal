@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -14,13 +15,26 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var configFile string = "config/config.yaml"
+var initRetDB bool = false
+var configFile string
 
 var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "run the rss server",
 	PreRunE: func(cmd *cobra.Command, args []string) error {
-		err := config.Conf.Load(configFile)
+		cmd.Flags().Bool("initdb", false, "shoulld initial retry database with the given path")
+		cmd.Flags().String("config", "config/config.yaml", "yaml config file path")
+		err := cmd.ParseFlags(args)
+		if err != nil {
+			return err
+		}
+		configFile = getConfigFilePath(cmd)
+		initdbStr := cmd.Flags().Lookup("initdb").Value.String()
+		initRetDB, err = strconv.ParseBool(initdbStr)
+		if err != nil {
+			return err
+		}
+		err = config.Conf.Load(configFile)
 		if err != nil {
 			return err
 		}
@@ -53,12 +67,19 @@ var runCmd = &cobra.Command{
 			rss.WithFeeds(ctx, "config/rss.yaml"),
 			rss.WithInterval(config.Conf.Http.Interval),
 			rss.WithRetInterval(config.Conf.Http.RetryInterval),
-			rss.WithNewRetryMemDB(ctx),
+			rss.WithNewRetryMemDB(ctx, nil),
 			rss.WithServerService(serverService),
 		)
 		if err != nil {
 			cancel()
 			return err
+		}
+		if initRetDB {
+			logger.Logger().Sugar().Debugw("initiaizing retry db")
+			err = rssService.SetInitialKeysWithPath(config.Conf.DB.RetryDBPath)
+			if err != nil {
+				logger.Logger().Sugar().Errorw("can't init retry db", "error", err, "stat", "using the empty db")
+			}
 		}
 
 		go rssService.Serve(ctx)
