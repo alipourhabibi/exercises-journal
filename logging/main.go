@@ -121,14 +121,15 @@ func main() {
 	if !*isFileServer {
 		service, err := rss.NewRssService(config.Conf.Server.Port, customLogger)
 		if err != nil {
-			customLogger.Error("creating rss service", "error", err)
+			customLogger.Error("msg", "creating rss service", "error", err)
 		}
 		err = service.Run()
 		if err != nil {
-			customLogger.Error("runngin rss service", "error", err)
+			customLogger.Error("msg", "runngin rss service", "error", err)
 			return
 		}
 	}
+
 	h2, err := http.NewFileServer(*customLogger, config.Conf.Server.Path, config.Conf.Server.Route)
 	if err != nil {
 		os.Exit(1)

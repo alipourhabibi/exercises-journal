@@ -29,5 +29,6 @@ func (r *RssService) Run() error {
 		}
 		r.logger.Info("body", string(body), "headers", req.Header)
 	})
+	r.logger.Info("msg", "Starting server", "port", r.port)
 	return http.ListenAndServe(fmt.Sprintf(":%d", r.port), nil)
 }
