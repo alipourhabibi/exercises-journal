@@ -30,7 +30,7 @@ http:
   # s for second
   # m for minute
   # h for hour
-  retry_interval: 10s
+  retry_interval: 1s
 
 db:
   persist: true

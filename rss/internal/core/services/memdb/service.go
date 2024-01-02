@@ -177,7 +177,7 @@ func (m *MemDBService) SetKey(key string, value Data) {
 
 	// Add the new item
 	if _, ok := m.db.dataMap[key]; ok {
-		return
+		m.unsafeDelete(key)
 	}
 	m.db.dataMap[key] = value
 	m.db.dataOrder = append(m.db.dataOrder, key)
@@ -188,6 +188,21 @@ func (m *MemDBService) GetAllKeys() []string {
 	m.RLock()
 	defer m.RUnlock()
 	return maps.Keys(m.db.dataMap)
+}
+
+func (m *MemDBService) unsafeDelete(key string) {
+	if _, ok := m.db.dataMap[key]; ok {
+		// Delete the key from the map
+		delete(m.db.dataMap, key)
+
+		// Remove the key from the order slice
+		for i, k := range m.db.dataOrder {
+			if k == key {
+				m.db.dataOrder = append(m.db.dataOrder[:i], m.db.dataOrder[i+1:]...)
+				break
+			}
+		}
+	}
 }
 
 func (m *MemDBService) DelKey(key string) {

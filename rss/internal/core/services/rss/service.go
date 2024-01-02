@@ -197,18 +197,17 @@ func (rs *RssService) SetRetInterval(interval string) {
 	rs.retinterval = duration
 }
 
-// TODO Think
-func (rs *RssService) SetNewFeeds(ctx context.Context, file string) {
+func (rs *RssService) SetNewFeeds(ctx context.Context, file string) error {
 	f, err := os.ReadFile(file)
 	if err != nil {
 		rs.logger.Sugar().Errorw("SetNewFeeds", "error", err)
-		return
+		return err
 	}
 	var rss map[string][]string
 	err = yaml.Unmarshal(f, &rss)
 	if err != nil {
 		rs.logger.Sugar().Errorw("SetNewFeeds", "error", err)
-		return
+		return err
 	}
 	links := rss["links"]
 	db, err := memdb.New(
@@ -220,7 +219,7 @@ func (rs *RssService) SetNewFeeds(ctx context.Context, file string) {
 	)
 	if err != nil {
 		rs.logger.Sugar().Errorw("SetNewFeeds", "error", err)
-		return
+		return err
 	}
 	rs.db = db
 	if db.GetEviction() {
@@ -229,6 +228,7 @@ func (rs *RssService) SetNewFeeds(ctx context.Context, file string) {
 	if db.GetPersist() {
 		go rs.db.RunPersistor(ctx)
 	}
+	return nil
 }
 
 func (rs *RssService) Serve(ctx context.Context) {
@@ -238,7 +238,7 @@ func (rs *RssService) Serve(ctx context.Context) {
 	rs.logger.Sugar().Debugw("Intervals", "interval", rs.interval, "retry-interval", rs.retinterval)
 
 	for _, v := range rs.db.GetAllKeys() {
-		go rs.asyncFeedCheck(v)
+		go rs.asyncFeedCheck(v, false)
 	}
 
 	ticker := time.NewTicker(rs.interval)
@@ -246,7 +246,7 @@ func (rs *RssService) Serve(ctx context.Context) {
 		select {
 		case <-ticker.C:
 			for _, v := range rs.db.GetAllKeys() {
-				go rs.asyncFeedCheck(v)
+				go rs.asyncFeedCheck(v, false)
 			}
 		case <-ctx.Done():
 			return
@@ -261,7 +261,7 @@ func (rs *RssService) retryAll(ctx context.Context) {
 		case <-ticker.C:
 			for _, v := range rs.retryDB.GetAllKeys() {
 				rs.logger.Sugar().Infow("retry", "feed", v)
-				go rs.asyncFeedCheck(v)
+				go rs.asyncFeedCheck(v, true)
 			}
 		case <-ctx.Done():
 			return
@@ -298,12 +298,12 @@ func (rs *RssService) getFeed(feed string) (RssFeed, error) {
 	return rss, nil
 }
 
-func (rs *RssService) asyncFeedCheck(feed string) {
-	rs.logger.Sugar().Debugw("asyncFeedCheck", "feed", feed)
+func (rs *RssService) asyncFeedCheck(feed string, isRetry bool) {
+	rs.logger.Sugar().Debugw("asyncFeedCheck", "feed", feed, "isRetry", isRetry)
 
 	rss, err := rs.getFeed(feed)
 	if err != nil {
-		rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error())
+		rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error(), "isRetry", isRetry, "feed", feed)
 		rs.db.DelKey(feed)
 		rs.retryDB.SetKey(feed, memdb.Data{
 			T: time.Now(),
@@ -312,9 +312,15 @@ func (rs *RssService) asyncFeedCheck(feed string) {
 	}
 
 	var lastBuildParsed time.Time
-	lastBuld, ok := rs.db.GetKey(feed)
-	if ok {
-		lastBuildParsed = lastBuld.T
+	var lastBuild memdb.Data
+	var ok bool
+	if !isRetry {
+		lastBuild, ok = rs.db.GetKey(feed)
+	} else {
+		lastBuild, ok = rs.retryDB.GetKey(feed)
+	}
+	if ok && !isRetry {
+		lastBuildParsed = lastBuild.T
 		if err != nil {
 			rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error())
 			return
@@ -343,37 +349,44 @@ func (rs *RssService) asyncFeedCheck(feed string) {
 	}
 	// rs.logger.Sugar().Debugw("asyncFeedCheck", "items", items)
 
-	// Sending to destinatio
+	// Sending to destination
 	rs.logger.Sugar().Debugw("asyncFeedCheck", "headers", config.Conf.Http.Headers)
 	itemsByte, err := json.Marshal(items)
 	if err != nil {
 		rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error())
 		return
 	}
+	rs.logger.Sugar().Debugw("sending", "isRetry", isRetry)
 	err = rs.server.Send(itemsByte, config.Conf.Http.Headers)
 	if err != nil {
 		rs.logger.Sugar().Debugw("DB", "items", rs.retryDB)
-		rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error())
-		rs.db.DelKey(feed)
-		rs.retryDB.SetKey(feed, memdb.Data{
-			T: time.Now(),
-		})
-		return
-	}
-
-	rs.logger.Sugar().Debugw("setting feed to db", "feed", feed)
-	date, err := rss.Channel.LastBuildDate.Parse()
-	if err != nil {
-		rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error())
+		rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error(), "isRetry", isRetry)
+		if !isRetry {
+			rs.db.DelKey(feed)
+			rs.retryDB.SetKey(feed, memdb.Data{
+				T: time.Now(),
+			})
+		}
 		return
 	}
 	rs.db.SetKey(feed, memdb.Data{
-		T: date,
+		T: time.Now(),
 	})
-	// removing from retry as it is ok
-	// delete if it was success
-	// TODO Possible better solution using channels to communicate
-	rs.retryDB.DelKey(feed)
+
+	rs.logger.Sugar().Debugw("setting feed to db", "feed", feed, "isRetry", isRetry)
+	// date, err := rss.Channel.LastBuildDate.Parse()
+	if err != nil {
+		rs.logger.Sugar().Errorw("asyncFeedCheck", "error", err.Error(), "isRetry", isRetry)
+		return
+	}
+	if isRetry {
+		rs.db.SetKey(feed, memdb.Data{
+			T: time.Now(),
+		})
+		// removing from retry as it is ok
+		// delete if it was success
+		rs.retryDB.DelKey(feed)
+	}
 
 	rs.logger.Sugar().Debugw("rss", "last_build_date", rss.Channel.LastBuildDate)
 }

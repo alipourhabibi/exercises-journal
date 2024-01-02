@@ -17,6 +17,7 @@ import (
 
 var initRetDB bool = false
 var configFile string
+var rssFile string
 
 var runCmd = &cobra.Command{
 	Use:   "run",
@@ -24,11 +25,13 @@ var runCmd = &cobra.Command{
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		cmd.Flags().Bool("initdb", false, "shoulld initial retry database with the given path")
 		cmd.Flags().String("config", "config/config.yaml", "yaml config file path")
+		cmd.Flags().String("rssfile", "config/rss.yaml", "rss file feeds")
 		err := cmd.ParseFlags(args)
 		if err != nil {
 			return err
 		}
 		configFile = getConfigFilePath(cmd)
+		rssFile = cmd.Flags().Lookup("rssfile").Value.String()
 		initdbStr := cmd.Flags().Lookup("initdb").Value.String()
 		initRetDB, err = strconv.ParseBool(initdbStr)
 		if err != nil {
@@ -64,7 +67,7 @@ var runCmd = &cobra.Command{
 
 		rssService, err := rss.New(
 			rss.WithLogger(logger.Logger()),
-			rss.WithFeeds(ctx, "config/rss.yaml"),
+			rss.WithFeeds(ctx, rssFile),
 			rss.WithInterval(config.Conf.Http.Interval),
 			rss.WithRetInterval(config.Conf.Http.RetryInterval),
 			rss.WithNewRetryMemDB(ctx, nil),
@@ -112,7 +115,6 @@ var runCmd = &cobra.Command{
 					rssService.SetLogger(logger.Logger())
 				}
 
-				rssService.SetRetDB(ctx)
 				serverService, err = server.New(
 					server.WithHost(config.Conf.Http.Destination),
 					server.WithTimetout(timeout),
@@ -125,10 +127,13 @@ var runCmd = &cobra.Command{
 				}
 				rssService.SetInterval(config.Conf.Http.Interval)
 				rssService.SetRetInterval(config.Conf.Http.RetryInterval)
+				err = rssService.SetInitialKeysWithPath(config.Conf.DB.RetryDBPath)
+				err = rssService.SetNewFeeds(ctx, rssFile)
 
 				go rssService.Serve(ctx)
 
 				state = waitForSignal
+				logger.Logger().Info("new config applied")
 			case waitForSignal:
 				signal.Notify(signalCh,
 					syscall.SIGHUP,
