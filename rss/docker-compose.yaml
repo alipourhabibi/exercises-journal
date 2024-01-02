@@ -1,0 +1,15 @@
+version: "3.4"
+
+services:
+
+  logger:
+    network_mode: host
+    container_name: logger
+    image: ghcr.io/alipourhabibi/exercise-journals-logging:latest
+    command: httpfileserver --isfileserver=false
+
+  rss:
+    network_mode: host
+    container_name: rss
+    image: ghcr.io/alipourhabibi/exercise-journals-rss:latest
+
