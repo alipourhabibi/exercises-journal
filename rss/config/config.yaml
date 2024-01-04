@@ -33,10 +33,15 @@ http:
   retry_interval: 1s
 
 db:
+  # should the database be persisted
   persist: true
+  # persisting interval
   persist_interval: 3s
   eviction: false
   eviction_interval: 3s
+  # database path for persistance
   db_path: /tmp/db.txt
+  # retry database path for persistance
   retry_db_path: /tmp/retdb.txt
+  # max data to be hold in db
   max_ret_db_data: 10000
