@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
-	"os"
 )
 
 type Index uint64
@@ -188,22 +187,4 @@ func (l *LinkedList) Show() {
 
 func (n *Node) String() string {
 	return fmt.Sprintf("SELF: %p, PREV: %p, NEXT: %p", n, n.prev, n.next)
-}
-
-func main() {
-	l := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-		AddSource: true,
-		Level:     slog.LevelDebug,
-	}))
-	slog.SetDefault(l)
-	list := NewLinkedListCap(1)
-	for i := 0; i < 10; i++ {
-		list.Insert(uint(i), i)
-	}
-	for _, v := range list.nodes.dataNodes {
-		fmt.Println(v, v.Data)
-	}
-	list.Remove(2)
-	list.Insert(2, 2)
-	list.Remove(2)
 }
