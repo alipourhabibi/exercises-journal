@@ -1,7 +1,6 @@
 package linkedlist
 
 import (
-	"log"
 	"testing"
 )
 
@@ -139,7 +138,6 @@ func TestRemove(t *testing.T) {
 	validTests = append(validTests[:1], validTests[1+1:]...)
 	validTests = append(validTests[:3], validTests[3+1:]...)
 
-	log.Println(validTests)
 	for k, v := range validTests {
 		item, ok := l.Get(uint(k))
 		if !ok {
