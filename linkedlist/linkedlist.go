@@ -6,15 +6,15 @@ type node struct {
 	Data int
 }
 
-type linkedList struct {
+type LinkedList struct {
 	head *node
 }
 
-func New() *linkedList {
-	return &linkedList{}
+func New() *LinkedList {
+	return &LinkedList{}
 }
 
-func (l *linkedList) Insert(index uint, data int) bool {
+func (l *LinkedList) Insert(index uint, data int) bool {
 	node := &node{
 		Data: data,
 	}
@@ -48,7 +48,7 @@ func (l *linkedList) Insert(index uint, data int) bool {
 	return true
 }
 
-func (l *linkedList) Remove(index uint) bool {
+func (l *LinkedList) Remove(index uint) bool {
 	if l.head == nil {
 		return false
 	}
@@ -69,7 +69,7 @@ func (l *linkedList) Remove(index uint) bool {
 	return true
 }
 
-func (l *linkedList) Find(n int) (index uint, found bool) {
+func (l *LinkedList) Find(n int) (index uint, found bool) {
 	head := l.head
 	index = 0
 	for head != nil {
@@ -82,7 +82,7 @@ func (l *linkedList) Find(n int) (index uint, found bool) {
 	return 0, false
 }
 
-func (l *linkedList) Get(index uint) (int, bool) {
+func (l *LinkedList) Get(index uint) (int, bool) {
 	head := l.head
 	for i := uint(0); i < index && head != nil; i++ {
 		head = head.next
