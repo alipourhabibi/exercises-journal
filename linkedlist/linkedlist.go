@@ -54,6 +54,7 @@ func (l *linkedList) Remove(index uint) bool {
 	}
 	if index == 0 {
 		l.head = l.head.next
+		return true
 	}
 	prev := l.head
 	for i := uint(0); i < index-1 && prev != nil; i++ {

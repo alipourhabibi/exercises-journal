@@ -2,6 +2,7 @@ package linkedlist
 
 import (
 	"testing"
+	"testing/quick"
 )
 
 func istOk(t *testing.T) {}
@@ -228,4 +229,58 @@ func TestFind(t *testing.T) {
 		}
 	}
 
+}
+
+func TestPropertyBasedTest(t *testing.T) {
+
+	err := quick.Check(func(inputs []int) bool {
+		l := New()
+
+		for k, v := range inputs {
+			ok := l.Insert(uint(k), v)
+			if !ok {
+				return false
+			}
+		}
+
+		for k, v := range inputs {
+			out, ok := l.Get(uint(k))
+			if !ok {
+				return false
+			}
+			if out != v {
+				return false
+			}
+		}
+
+		for k, v := range inputs {
+			index, found := l.Find(v)
+			if !found {
+				return false
+			}
+			if index != uint(k) {
+				return false
+			}
+		}
+
+		for v := uint(len(inputs)); v > 0; v-- {
+			ok := l.Remove(v - 1)
+			if !ok {
+				t.Fatal(v)
+			}
+		}
+
+		for k := range inputs {
+			_, ok := l.Get(uint(k))
+			if ok {
+				return false
+			}
+		}
+
+		return true
+	}, nil)
+
+	if err != nil {
+		t.Fatal(err)
+	}
 }
