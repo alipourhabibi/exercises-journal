@@ -7,6 +7,7 @@ type node struct {
 }
 
 type LinkedList struct {
+	size uint
 	head *node
 }
 
@@ -21,6 +22,7 @@ func (l *LinkedList) Insert(index uint, data int) bool {
 	if index == 0 {
 		node.next = l.head
 		l.head = node
+		l.size++
 		return true
 	}
 
@@ -44,6 +46,7 @@ func (l *LinkedList) Insert(index uint, data int) bool {
 	node.next = prev.next
 	prev.next = node
 	// head.next = node
+	l.size++
 
 	return true
 }
@@ -54,6 +57,7 @@ func (l *LinkedList) Remove(index uint) bool {
 	}
 	if index == 0 {
 		l.head = l.head.next
+		l.size--
 		return true
 	}
 	prev := l.head
@@ -65,6 +69,7 @@ func (l *LinkedList) Remove(index uint) bool {
 		return false
 	}
 	prev.next = prev.next.next
+	l.size--
 
 	return true
 }
