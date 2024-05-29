@@ -243,6 +243,10 @@ func TestPropertyBasedTest(t *testing.T) {
 			}
 		}
 
+		if l.size != uint(len(inputs)) {
+			return false
+		}
+
 		for k, v := range inputs {
 			out, ok := l.Get(uint(k))
 			if !ok {
@@ -268,6 +272,10 @@ func TestPropertyBasedTest(t *testing.T) {
 			if !ok {
 				t.Fatal(v)
 			}
+		}
+
+		if l.size != 0 {
+			return false
 		}
 
 		for k := range inputs {
