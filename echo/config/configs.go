@@ -1,10 +1,18 @@
 package config
 
 import (
+	"log/slog"
 	"os"
 
 	"gopkg.in/yaml.v3"
 )
+
+var MapLevel = map[string]slog.Level{
+	"DEBUG": slog.LevelDebug,
+	"INFO":  slog.LevelInfo,
+	"WARN":  slog.LevelWarn,
+	"ERROR": slog.LevelError,
+}
 
 var Confs config
 
