@@ -22,11 +22,12 @@ func New(e *echo.Echo) (*server, error) {
 		return nil, err
 	}
 	s.list = l
+	v1 := e.Group("/v1")
 
-	e.PUT("/list", s.Insert)
-	e.DELETE("/list/:index", s.Remove)
-	e.GET("/list/value/:value", s.Find)
-	e.GET("/list/index/:index", s.Get)
+	v1.PUT("/list", s.Insert)
+	v1.DELETE("/list/:index", s.Remove)
+	v1.GET("/list/value/:value", s.Find)
+	v1.GET("/list/index/:index", s.Get)
 
 	return s, nil
 }
