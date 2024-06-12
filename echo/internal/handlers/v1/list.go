@@ -22,7 +22,7 @@ func New(e *echo.Echo) (*server, error) {
 		return nil, err
 	}
 	s.list = l
-	v1 := e.Group("/v1")
+	v1 := e.Group("/api/v1")
 
 	v1.PUT("/list", s.Insert)
 	v1.DELETE("/list/:index", s.Remove)
@@ -45,6 +45,7 @@ func (s *server) Insert(c echo.Context) error {
 	if !ok {
 		return echo.NewHTTPError(echo.ErrBadRequest.Code, "Invalid index")
 	}
+	c.JSON(http.StatusCreated, data)
 	return nil
 }
 
