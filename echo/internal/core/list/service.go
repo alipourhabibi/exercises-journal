@@ -55,12 +55,12 @@ func (l *ListService) Insert(index uint, value int) bool {
 func (l *ListService) Remove(index uint) bool {
 	l.Lock()
 	defer l.Unlock()
-	return l.Remove(index)
+	return l.linkedlist.Remove(index)
 }
 
 func (l *ListService) Find(value int) (uint, bool) {
 	l.Lock()
-	defer l.Lock()
+	defer l.Unlock()
 	return l.linkedlist.Find(value)
 }
 
