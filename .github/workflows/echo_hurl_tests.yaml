@@ -1,4 +1,4 @@
-name: Hurl Tests
+name: Echo ci
 
 on:
   push:
