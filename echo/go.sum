@@ -1,3 +1,5 @@
+github.com/alipourhabibi/exercises-journal/linkedlist v0.0.0-20240614052554-7c585c1ca41b h1:+DHTYjwOtxEqCEddnGBZPaPWeky6Vrj5f/R7NY0bH8I=
+github.com/alipourhabibi/exercises-journal/linkedlist v0.0.0-20240614052554-7c585c1ca41b/go.mod h1:VwGrmh3londq9c2XPIC1hNV2HvX4RIdcTOh7I4EsGpk=
 github.com/cpuguy83/go-md2man/v2 v2.0.3/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

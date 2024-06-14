@@ -3,7 +3,7 @@ module github.com/alipourhabibi/exercises-journal/echo
 go 1.22.1
 
 require (
-	github.com/alipourhabibi/exercises-journal/linkedlist v0.0.0-20240510171656-9b3dbe249e1c
+	github.com/alipourhabibi/exercises-journal/linkedlist v0.0.0-20240614052554-7c585c1ca41b
 	github.com/go-playground/validator v9.31.0+incompatible
 	github.com/labstack/echo v3.3.10+incompatible
 	github.com/spf13/cobra v1.8.0
@@ -29,5 +29,3 @@ require (
 	golang.org/x/text v0.15.0 // indirect
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 )
-
-replace github.com/alipourhabibi/exercises-journal/linkedlist => /home/ali/go/src/github.com/alipourhabibi/exercises-journal/linkedlist

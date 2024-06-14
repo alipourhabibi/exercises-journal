@@ -17,11 +17,27 @@ func init() {
 	rootCmd.AddCommand(runCmd)
 }
 
+func getConfigFilePath(cmd *cobra.Command) string {
+	configFlag := cmd.Flags().Lookup("config")
+	if configFlag != nil {
+		configFilePath := configFlag.Value.String()
+		if configFilePath != "" {
+			return configFilePath
+		}
+	}
+	return ""
+}
+
 var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "run http server",
 	PreRunE: func(cmd *cobra.Command, args []string) error {
-		err := config.Load("config/config.yaml")
+		cmd.Flags().String("config", "config/config.yaml", "yaml config file path")
+		err := cmd.ParseFlags(args)
+		if err != nil {
+			return err
+		}
+		err = config.Load(getConfigFilePath(cmd))
 		if err != nil {
 			return err
 		}
