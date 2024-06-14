@@ -24,10 +24,10 @@ func New(e *echo.Echo) (*server, error) {
 	s.list = l
 	v1 := e.Group("/api/v1")
 
-	v1.PUT("/list", s.Insert)
-	v1.DELETE("/list/:index", s.Remove)
-	v1.GET("/list/value/:value", s.Find)
-	v1.GET("/list/index/:index", s.Get)
+	v1.PUT("/numbers", s.Insert)
+	v1.DELETE("/numbers/:index", s.Remove)
+	v1.GET("/numbers/value/:value", s.Find)
+	v1.GET("/numbers/index/:index", s.Get)
 
 	return s, nil
 }
